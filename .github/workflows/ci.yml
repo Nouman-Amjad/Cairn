@@ -259,9 +259,13 @@ jobs:
         working-directory: packages/cairn-core
         run: uv run alembic upgrade head
       - name: run the incident suite
-        # replay mode: recorded model responses, so this is a gate and not a
-        # coin flip. See services/cairn-eval/README.md for recording.
-        run: uv run cairn-eval --mode replay --out eval-results.json
+        # Heuristic mode, not replay: replay needs fixtures/recordings.json,
+        # which only exists after `make eval-record` against a live model API
+        # key — a real cost, run by a human, not something CI can do with the
+        # secrets available here. This gate therefore verifies the harness
+        # (scenario loading, the seven metrics, scoring) does not regress; it
+        # is not an agent-quality signal. See services/cairn-eval/README.md.
+        run: uv run cairn-eval --mode heuristic --out eval-results.json
       - name: gate
         # Blocks the merge if accuracy drops >5 points or mean cost rises >20%
         # against main's baseline.
