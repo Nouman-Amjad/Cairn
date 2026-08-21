@@ -1,0 +1,14 @@
+.venv/
+.git/
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+**/.ruff_cache/
+**/.mypy_cache/
+ui/node_modules/
+ui/.next/
+cairn-infra/
+cairn-deploy/
+docs/
+*.md
+eval-results.json
