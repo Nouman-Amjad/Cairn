@@ -1,0 +1,28 @@
+{
+  "tools": {
+    "readonly": [
+      "query_metrics",
+      "query_logs",
+      "list_services",
+      "get_deploy_timeline",
+      "get_traces",
+      "fetch_artifact",
+      "search_runbooks",
+      "get_runbook",
+      "find_similar_incidents"
+    ],
+    "write": [
+      "create_ticket",
+      "post_incident_summary",
+      "rollback_deploy",
+      "scale_deployment",
+      "silence_alert"
+    ]
+  },
+  "ownership": {
+    "checkout": ["checkout-api", "cart-service"],
+    "payments": ["payments-api", "payments-gateway"],
+    "search": ["search-api", "inventory-api"],
+    "platform": ["notification-worker"]
+  }
+}

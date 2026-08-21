@@ -1,0 +1,32 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cairn-prod
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Nouman-Amjad/cairn-deploy.git
+    targetRevision: main
+    path: charts/cairn
+    helm:
+      valueFiles:
+        - ../../values/prod.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: cairn
+  syncPolicy:
+    automated:
+      # No prune on prod: an accidental file deletion in Git should not take
+      # the StatefulSet's PVC with it. Prune happens by explicit sync.
+      prune: false
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+  # The migration Job is a Helm hook and is expected to be replaced each sync.
+  ignoreDifferences:
+    - group: batch
+      kind: Job
+      jsonPointers:
+        - /spec/template/metadata/labels

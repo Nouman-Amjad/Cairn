@@ -1,0 +1,22 @@
+# App-of-apps. This is the only thing bootstrapped by hand; everything else
+# arrives through Git.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cairn-root
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Nouman-Amjad/cairn-deploy.git
+    targetRevision: main
+    path: apps/children
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

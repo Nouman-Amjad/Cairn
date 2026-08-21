@@ -1,0 +1,18 @@
+{{/*
+Routing policy and prices as data. Retuning the local/cloud split is a
+`kubectl apply` the router hot-reloads, not a deploy — still reviewed,
+still in Git, just seconds instead of a pipeline run.
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cairn-routing
+data:
+{{ (.Files.Glob "routing/*.yaml").AsConfig | indent 2 }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cairn-prompts
+data:
+{{ (.Files.Glob "prompts/*.md").AsConfig | indent 2 }}

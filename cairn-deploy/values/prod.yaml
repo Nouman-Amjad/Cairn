@@ -1,0 +1,35 @@
+global:
+  env: prod
+  uiBaseUrl: https://cairn.example.com
+
+auth:
+  devMode: false
+
+vllm:
+  scaling:
+    # Tier C: one node held warm at all times. Below this volume the ~$180/mo
+    # of idle GPU does not pay for the 95 seconds it saves.
+    minReplicas: 1
+    maxReplicas: 3
+
+ingress:
+  host: cairn.example.com
+
+rollout:
+  enabled: true
+
+externalSecrets:
+  cairn-database:
+    dsn: cairn/prod/database-dsn
+  cairn-internal-jwt:
+    current: cairn/prod/internal-jwt-current
+    previous: cairn/prod/internal-jwt-previous
+  cairn-anthropic:
+    api-key: cairn/prod/anthropic-api-key
+  cairn-slack:
+    bot-token: cairn/prod/slack-bot-token
+    signing-secret: cairn/prod/slack-signing-secret
+  cairn-jira:
+    token: cairn/prod/jira-token
+  cairn-argocd:
+    token: cairn/prod/argocd-token

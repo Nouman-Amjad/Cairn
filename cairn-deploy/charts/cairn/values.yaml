@@ -1,0 +1,200 @@
+# Defaults. Environment overlays live in ../../values/{dev,staging,prod}.yaml
+# and only state what differs.
+
+global:
+  image:
+    registry: 123456789012.dkr.ecr.eu-west-1.amazonaws.com
+    tag: "0.1.0" # set by CI to the immutable digest tag; never `latest`
+    pullPolicy: IfNotPresent
+  env: prod
+  region: eu-west-1
+  uiBaseUrl: https://cairn.example.com
+  otelEndpoint: http://otel-collector.observability:4317
+  logLevel: INFO
+
+# Every service is rendered from this map by templates/services.yaml. Adding a
+# service is a values entry, not a new set of near-identical manifests.
+services:
+  gateway:
+    image: cairn-gateway
+    replicas: 2
+    autoscale: { enabled: true, min: 2, max: 10, cpu: 70 }
+    resources:
+      requests: { cpu: 200m, memory: 384Mi }
+      limits: { memory: 768Mi }
+    ingress: true
+    egress: [orchestrator, approval, postgres, redis, dns]
+
+  orchestrator:
+    image: cairn-orchestrator
+    replicas: 2
+    autoscale: { enabled: true, min: 2, max: 12, cpu: 70 }
+    resources:
+      requests: { cpu: 300m, memory: 512Mi }
+      limits: { memory: 1Gi }
+    # The component with model-controlled behaviour. No internet, ever.
+    egress: [router, mcp, postgres, redis, dns]
+    terminationGracePeriodSeconds: 130
+
+  router:
+    image: cairn-router
+    replicas: 2
+    autoscale: { enabled: true, min: 2, max: 6, cpu: 70 }
+    resources:
+      requests: { cpu: 200m, memory: 384Mi }
+      limits: { memory: 768Mi }
+    egress: [vllm, anthropic, dns]
+    secrets: [anthropic-api-key]
+    configMounts: [routing]
+
+  approval:
+    image: cairn-approval
+    replicas: 2
+    autoscale: { enabled: false }
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits: { memory: 512Mi }
+    egress: [mcp-actions, slack, postgres, dns]
+    secrets: [slack-bot-token, slack-signing-secret]
+    # Slack posts decisions here, so this one path is reachable from outside.
+    ingress: true
+    ingressPath: /slack/interactions
+
+  mcp-observability:
+    image: cairn-mcp-observability
+    tier: mcp
+    replicas: 2
+    autoscale: { enabled: true, min: 2, max: 8, cpu: 70 }
+    resources:
+      requests: { cpu: 200m, memory: 384Mi }
+      limits: { memory: 768Mi }
+    egress: [observability-backends, postgres, s3, dns]
+    opaSidecar: true
+
+  mcp-runbooks:
+    image: cairn-mcp-runbooks
+    tier: mcp
+    replicas: 2
+    autoscale: { enabled: true, min: 2, max: 6, cpu: 70 }
+    resources:
+      requests: { cpu: 200m, memory: 512Mi }
+      limits: { memory: 1Gi }
+    egress: [embeddings, postgres, dns]
+    opaSidecar: true
+
+  mcp-actions:
+    image: cairn-mcp-actions
+    tier: mcp
+    replicas: 2
+    autoscale: { enabled: false }
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits: { memory: 512Mi }
+    egress: [approval, argocd, jira, slack, kube-api, postgres, dns]
+    secrets: [jira-token, argocd-token, slack-bot-token]
+    opaSidecar: true
+
+  ui:
+    image: cairn-ui
+    replicas: 2
+    port: 3000
+    autoscale: { enabled: true, min: 2, max: 6, cpu: 70 }
+    resources:
+      requests: { cpu: 100m, memory: 256Mi }
+      limits: { memory: 512Mi }
+    ingress: true
+    egress: [dns]
+
+vllm:
+  enabled: true
+  image:
+    repository: 123456789012.dkr.ecr.eu-west-1.amazonaws.com/cairn-vllm
+    # Weights are baked into this image: pulling 5.8 GiB from HuggingFace on
+    # every pod start is neither fast nor reliable.
+    tag: "qwen3-8b-awq-0.1.0"
+  model: Qwen/Qwen3-8B-AWQ
+  servedModelName: cairn-local
+  maxModelLen: 16384
+  maxNumSeqs: 16
+  gpuMemoryUtilization: "0.90"
+  maxNumBatchedTokens: 8192
+  scaling:
+    minReplicas: 0 # 1 at Tier C: a warm node costs ~$180/mo and saves 95s
+    maxReplicas: 3
+    cooldownSeconds: 600 # matches Karpenter's consolidateAfter
+    queueDepthThreshold: "8"
+    kvCacheThreshold: "0.75"
+  resources:
+    limits: { nvidia.com/gpu: 1, memory: 24Gi }
+    requests: { cpu: "3", memory: 16Gi }
+  modelCacheHostPath: /var/lib/cairn/models
+
+embeddings:
+  enabled: true
+  image: ghcr.io/huggingface/text-embeddings-inference:1.6
+  model: BAAI/bge-m3
+  reranker: BAAI/bge-reranker-v2-m3
+
+database:
+  host: cairn-prod.abcdefg.eu-west-1.rds.amazonaws.com
+  name: cairn
+  port: 5432
+  poolSize: 10
+
+redis:
+  host: cairn-prod.abcdef.ng.0001.euw1.cache.amazonaws.com
+  port: 6379
+
+s3:
+  bucket: cairn-artifacts-prod
+  kmsKeyId: ""
+
+auth:
+  oidcIssuer: https://example.okta.com/oauth2/default
+  oidcAudience: cairn
+  devMode: false # the gateway refuses to start with this on in prod
+
+policy:
+  enabled: true
+  bundleUrl: s3://cairn-policy-prod/bundles/cairn.tar.gz
+  opaImage: openpolicyagent/opa:0.70.0-static
+
+backends:
+  prometheusUrl: http://mimir-query-frontend.observability:8080/prometheus
+  lokiUrl: http://loki-query-frontend.observability:3100
+  tempoUrl: http://tempo-query-frontend.observability:3100
+  argocdUrl: https://argocd.example.com
+  jiraUrl: https://example.atlassian.net
+  jiraProject: OPS
+  githubOrg: Nouman-Amjad
+
+ingest:
+  enabled: true
+  schedule: "17 * * * *"
+  repoUrl: https://github.com/Nouman-Amjad/runbooks.git
+  urlPrefix: https://github.com/Nouman-Amjad/runbooks/blob/main
+
+ingress:
+  className: alb
+  host: cairn.example.com
+  certificateArn: ""
+
+serviceAccount:
+  # IRSA: each service assumes a role scoped to exactly the secrets and
+  # buckets it needs. The Anthropic key is readable only by the router.
+  annotations: {}
+
+budgets:
+  maxDailyCostPerUserUsd: "5.0"
+  dailyCostForecastUsd: "40.0"
+  costBreakerTripRatio: "1.5"
+  rateLimitPerMinute: "20"
+
+rollout:
+  enabled: true
+  analysis:
+    errorRateThreshold: "0.05"
+    p95LatencyThresholdSeconds: "60"
+    # The gate people forget: a prompt change that is functionally fine but
+    # triples token use will not fail a health check.
+    meanCostThresholdUsd: "0.90"

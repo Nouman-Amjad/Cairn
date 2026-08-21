@@ -1,0 +1,198 @@
+{{- if .Values.vllm.enabled }}
+{{/*
+The local inference tier.
+
+Every flag here has a reason; see docs/inference.md. The two that are
+security controls rather than tuning: --disable-log-requests (prompts carry
+restricted data and must never be logged) and the absence of any egress
+beyond the VPC endpoints.
+*/}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cairn-vllm
+  labels:
+    app.kubernetes.io/name: cairn-vllm
+    app.kubernetes.io/part-of: cairn
+spec:
+  replicas: {{ .Values.vllm.scaling.minReplicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cairn-vllm
+  strategy:
+    type: Recreate # one GPU per node; a surge pod would never schedule
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: cairn-vllm
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+    spec:
+      serviceAccountName: cairn-vllm
+      nodeSelector:
+        workload: inference
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
+      # Spot reclaim gives 120 seconds. In-flight sequences finish; new work
+      # is refused the moment the node is cordoned.
+      terminationGracePeriodSeconds: 120
+      containers:
+        - name: vllm
+          image: "{{ .Values.vllm.image.repository }}:{{ .Values.vllm.image.tag }}"
+          args:
+            - --model={{ .Values.vllm.model }}
+            - --served-model-name={{ .Values.vllm.servedModelName }}
+            - --quantization=awq_marlin
+            - --dtype=float16
+            - --max-model-len={{ .Values.vllm.maxModelLen }}
+            - --max-num-seqs={{ .Values.vllm.maxNumSeqs }}
+            - --gpu-memory-utilization={{ .Values.vllm.gpuMemoryUtilization }}
+            # The system prompt plus tool definitions run ~2,800 tokens and are
+            # byte-identical every call. This turns that into a cache hit.
+            - --enable-prefix-caching
+            # Stops a 12k prefill from stalling decode for every other request.
+            - --enable-chunked-prefill
+            - --max-num-batched-tokens={{ .Values.vllm.maxNumBatchedTokens }}
+            - --tensor-parallel-size=1
+            # Compliance control, not a performance tweak.
+            - --disable-log-requests
+            - --download-dir=/models
+          ports:
+            - name: http
+              containerPort: 8000
+          env:
+            - name: HF_HOME
+              value: /models
+            - name: VLLM_WORKER_MULTIPROC_METHOD
+              value: spawn
+          resources:
+            {{- toYaml .Values.vllm.resources | nindent 12 }}
+          volumeMounts:
+            - { name: models, mountPath: /models }
+            - { name: shm, mountPath: /dev/shm }
+          startupProbe:
+            httpGet: { path: /health, port: http }
+            failureThreshold: 30
+            periodSeconds: 10 # 300s before the pod is declared dead
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 90
+            periodSeconds: 10
+            failureThreshold: 3
+          lifecycle:
+            postStart:
+              exec:
+                # One synthetic completion to trigger CUDA graph capture.
+                # Without it the first real request eats ~8s of capture and
+                # looks like a latency spike on the dashboard.
+                command:
+                  - /bin/sh
+                  - -c
+                  - |
+                    for i in $(seq 1 60); do
+                      curl -sf -X POST localhost:8000/v1/chat/completions \
+                        -H 'content-type: application/json' \
+                        -d '{"model":"{{ .Values.vllm.servedModelName }}","messages":[{"role":"user","content":"ok"}],"max_tokens":1}' \
+                        && exit 0
+                      sleep 5
+                    done
+      volumes:
+        - name: models
+          hostPath:
+            # Node reuse across pod restarts skips the image layer entirely.
+            path: {{ .Values.vllm.modelCacheHostPath }}
+            type: DirectoryOrCreate
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cairn-vllm
+spec:
+  selector:
+    app.kubernetes.io/name: cairn-vllm
+  ports:
+    - name: http
+      port: 8000
+      targetPort: http
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cairn-vllm
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: cairn-vllm
+spec:
+  scaleTargetRef:
+    name: cairn-vllm
+  minReplicaCount: {{ .Values.vllm.scaling.minReplicas }}
+  maxReplicaCount: {{ .Values.vllm.scaling.maxReplicas }}
+  # A GPU node takes ~90s to provision and costs real money. Scaling down
+  # after a minute of quiet, then paying that cold start on the next query,
+  # is worse on both axes.
+  cooldownPeriod: {{ .Values.vllm.scaling.cooldownSeconds }}
+  pollingInterval: 15
+  triggers:
+    # Queue depth and KV-cache pressure, not GPU utilisation. Utilisation
+    # sits near 100% during any decode and says nothing about saturation.
+    - type: prometheus
+      metadata:
+        serverAddress: {{ .Values.backends.prometheusUrl }}
+        query: sum(vllm:num_requests_waiting)
+        threshold: {{ .Values.vllm.scaling.queueDepthThreshold | quote }}
+    - type: prometheus
+      metadata:
+        serverAddress: {{ .Values.backends.prometheusUrl }}
+        query: avg(vllm:gpu_cache_usage_perc)
+        threshold: {{ .Values.vllm.scaling.kvCacheThreshold | quote }}
+{{- end }}
+{{- if .Values.embeddings.enabled }}
+---
+{{/*
+bge-m3 and its reranker, co-located on the same GPU node as vLLM. Embeddings
+then cost no extra hardware and no runbook text leaves the cluster.
+*/}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cairn-embeddings
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app.kubernetes.io/name: cairn-embeddings }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: cairn-embeddings }
+    spec:
+      nodeSelector: { workload: inference }
+      tolerations:
+        - { key: nvidia.com/gpu, operator: Equal, value: "true", effect: NoSchedule }
+      containers:
+        - name: tei
+          image: {{ .Values.embeddings.image }}
+          args: ["--model-id", "{{ .Values.embeddings.model }}", "--port", "8080"]
+          ports: [{ name: http, containerPort: 8080 }]
+          resources:
+            limits: { nvidia.com/gpu: 1, memory: 8Gi }
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cairn-embeddings
+spec:
+  selector: { app.kubernetes.io/name: cairn-embeddings }
+  ports: [{ name: http, port: 8080, targetPort: http }]
+{{- end }}
