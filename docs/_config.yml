@@ -1,0 +1,9 @@
+theme: jekyll-theme-cayman
+title: Cairn
+description: Agentic incident-analysis copilot — architecture, security model, and ADRs.
+markdown: kramdown
+plugins:
+  - jekyll-relative-links
+relative_links:
+  enabled: true
+  collections: true

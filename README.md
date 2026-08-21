@@ -1,5 +1,11 @@
 # Cairn
 
+[![npm](https://img.shields.io/npm/v/%40nouman-amjad%2Fcairn?logo=npm&color=cb3837)](https://www.npmjs.com/package/@nouman-amjad/cairn)
+[![ci](https://github.com/Nouman-Amjad/Cairn/actions/workflows/ci.yml/badge.svg)](https://github.com/Nouman-Amjad/Cairn/actions/workflows/ci.yml)
+[![license](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
+[![node](https://img.shields.io/node/v/%40nouman-amjad%2Fcairn)](https://nodejs.org)
+[![dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)](npm/package.json)
+
 An agentic incident-analysis copilot. Ask "why did checkout latency spike at
 3am?" in plain English; Cairn queries the observability stack, correlates
 against the deploy timeline, retrieves the relevant runbook, and proposes a
@@ -7,6 +13,26 @@ root cause with evidence — and can execute a remediation, behind a human
 approval gate.
 
 This repository implements [`docs/architecture.md`](docs/architecture.md).
+
+## The dashboard
+
+The companion npm package (`npx @nouman-amjad/cairn dashboard`) serves a live
+local dashboard over any project — no build step, no dependencies, no network.
+
+![Cairn dashboard — overview](docs/images/dashboard-overview.png)
+
+<details>
+<summary>Findings, logs, services and chat</summary>
+
+![Findings](docs/images/dashboard-findings.png)
+
+![Logs](docs/images/dashboard-logs.png)
+
+![Services](docs/images/dashboard-services.png)
+
+![Chat](docs/images/dashboard-chat.png)
+
+</details>
 
 ## The four commitments, and where they live in the code
 

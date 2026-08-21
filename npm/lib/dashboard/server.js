@@ -94,8 +94,12 @@ async function route(url, req, res, state) {
     return res.end(html);
   }
 
-  if (pathname === "/app.js" && req.method === "GET") {
-    const script = readFileSync(join(HERE, "client.js"), "utf8");
+  // Two modules, served straight off disk. The allowlist is the whole of the
+  // path handling here on purpose: never join a request-supplied name onto
+  // HERE, or the dashboard becomes a file server for the machine it runs on.
+  if (req.method === "GET" && (pathname === "/app.js" || pathname === "/charts.js")) {
+    const file = pathname === "/app.js" ? "client.js" : "charts.js";
+    const script = readFileSync(join(HERE, file), "utf8");
     res.writeHead(200, { "content-type": "text/javascript; charset=utf-8" });
     return res.end(script);
   }

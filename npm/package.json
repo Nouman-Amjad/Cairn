@@ -1,7 +1,7 @@
 {
   "name": "@nouman-amjad/cairn",
-  "version": "0.1.0",
-  "description": "Platform analysis, a live dashboard and log chat for any project. Zero dependencies.",
+  "version": "0.2.0",
+  "description": "Platform analysis, a live animated dashboard and log chat for any project. Zero dependencies.",
   "type": "module",
   "license": "Apache-2.0",
   "author": "Nouman Amjad",
@@ -24,7 +24,22 @@
     "docker",
     "audit",
     "logs",
-    "cli"
+    "cli",
+    "sre",
+    "devops-tools",
+    "static-analysis",
+    "security-audit",
+    "dockerfile-lint",
+    "k8s",
+    "log-viewer",
+    "log-analysis",
+    "project-health",
+    "zero-dependency",
+    "terraform",
+    "docker-compose",
+    "tech-debt",
+    "code-quality",
+    "devsecops"
   ],
   "bin": {
     "cairn": "bin/cairn.js"
