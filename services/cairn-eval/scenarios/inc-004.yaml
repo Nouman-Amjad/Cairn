@@ -1,0 +1,305 @@
+id: inc-004
+title: Upstream dependency outage surfacing as 502s
+archetype: dependency_outage
+solvable: true
+question: checkout-api is returning 502s from 03:10, what broke?
+ground_truth:
+  root_cause: payments-gateway, an upstream dependency, stopped accepting connections. checkout-api's
+    circuit breaker opened and it returned 502s. The fault is not in checkout-api.
+  causal_service: payments-gateway
+  contributing_deploy: null
+  required_evidence:
+  - log_pattern: circuit breaker open for payments-gateway
+  - metric: http_requests_total
+  - event: upstream_connection_refused
+distractors:
+- checkout-api deploy four days ago
+- a memory increase on checkout-api that is a symptom of request queuing
+world:
+  get_deploy_timeline:
+  - at: '2026-07-22T03:00:00Z'
+    revision: 0011aabbccdd
+    source: argocd
+    service: checkout-api
+    creator: rmoore
+  query_metrics:
+  - metric: http_requests_total
+    labels: app=checkout-api,status=502
+    points: 60
+    min: 0
+    max: 340
+    mean: 170.0
+    first: 0
+    last: 340
+    series:
+    - - 0
+      - 0
+    - - 1
+      - 0
+    - - 2
+      - 0
+    - - 3
+      - 0
+    - - 4
+      - 0
+    - - 5
+      - 0
+    - - 6
+      - 0
+    - - 7
+      - 0
+    - - 8
+      - 0
+    - - 9
+      - 0
+    - - 10
+      - 0
+    - - 11
+      - 0
+    - - 12
+      - 0
+    - - 13
+      - 0
+    - - 14
+      - 0
+    - - 15
+      - 0
+    - - 16
+      - 0
+    - - 17
+      - 0
+    - - 18
+      - 0
+    - - 19
+      - 0
+    - - 20
+      - 0
+    - - 21
+      - 0
+    - - 22
+      - 0
+    - - 23
+      - 0
+    - - 24
+      - 0
+    - - 25
+      - 0
+    - - 26
+      - 0
+    - - 27
+      - 0
+    - - 28
+      - 0
+    - - 29
+      - 0
+    - - 30
+      - 340
+    - - 31
+      - 340
+    - - 32
+      - 340
+    - - 33
+      - 340
+    - - 34
+      - 340
+    - - 35
+      - 340
+    - - 36
+      - 340
+    - - 37
+      - 340
+    - - 38
+      - 340
+    - - 39
+      - 340
+    - - 40
+      - 340
+    - - 41
+      - 340
+    - - 42
+      - 340
+    - - 43
+      - 340
+    - - 44
+      - 340
+    - - 45
+      - 340
+    - - 46
+      - 340
+    - - 47
+      - 340
+    - - 48
+      - 340
+    - - 49
+      - 340
+    - - 50
+      - 340
+    - - 51
+      - 340
+    - - 52
+      - 340
+    - - 53
+      - 340
+    - - 54
+      - 340
+    - - 55
+      - 340
+    - - 56
+      - 340
+    - - 57
+      - 340
+    - - 58
+      - 340
+    - - 59
+      - 340
+  - metric: container_memory_working_set_bytes
+    labels: pod=checkout-api-ee11
+    points: 60
+    min: 390000000.0
+    max: 520000000.0
+    mean: 455000000.0
+    first: 390000000.0
+    last: 520000000.0
+    series:
+    - - 0
+      - 390000000.0
+    - - 1
+      - 390000000.0
+    - - 2
+      - 390000000.0
+    - - 3
+      - 390000000.0
+    - - 4
+      - 390000000.0
+    - - 5
+      - 390000000.0
+    - - 6
+      - 390000000.0
+    - - 7
+      - 390000000.0
+    - - 8
+      - 390000000.0
+    - - 9
+      - 390000000.0
+    - - 10
+      - 390000000.0
+    - - 11
+      - 390000000.0
+    - - 12
+      - 390000000.0
+    - - 13
+      - 390000000.0
+    - - 14
+      - 390000000.0
+    - - 15
+      - 390000000.0
+    - - 16
+      - 390000000.0
+    - - 17
+      - 390000000.0
+    - - 18
+      - 390000000.0
+    - - 19
+      - 390000000.0
+    - - 20
+      - 390000000.0
+    - - 21
+      - 390000000.0
+    - - 22
+      - 390000000.0
+    - - 23
+      - 390000000.0
+    - - 24
+      - 390000000.0
+    - - 25
+      - 390000000.0
+    - - 26
+      - 390000000.0
+    - - 27
+      - 390000000.0
+    - - 28
+      - 390000000.0
+    - - 29
+      - 390000000.0
+    - - 30
+      - 520000000.0
+    - - 31
+      - 520000000.0
+    - - 32
+      - 520000000.0
+    - - 33
+      - 520000000.0
+    - - 34
+      - 520000000.0
+    - - 35
+      - 520000000.0
+    - - 36
+      - 520000000.0
+    - - 37
+      - 520000000.0
+    - - 38
+      - 520000000.0
+    - - 39
+      - 520000000.0
+    - - 40
+      - 520000000.0
+    - - 41
+      - 520000000.0
+    - - 42
+      - 520000000.0
+    - - 43
+      - 520000000.0
+    - - 44
+      - 520000000.0
+    - - 45
+      - 520000000.0
+    - - 46
+      - 520000000.0
+    - - 47
+      - 520000000.0
+    - - 48
+      - 520000000.0
+    - - 49
+      - 520000000.0
+    - - 50
+      - 520000000.0
+    - - 51
+      - 520000000.0
+    - - 52
+      - 520000000.0
+    - - 53
+      - 520000000.0
+    - - 54
+      - 520000000.0
+    - - 55
+      - 520000000.0
+    - - 56
+      - 520000000.0
+    - - 57
+      - 520000000.0
+    - - 58
+      - 520000000.0
+    - - 59
+      - 520000000.0
+  query_logs:
+  - ts: '2026-07-26T03:00:00Z'
+    line: 'upstream connect error to payments-gateway: connection refused'
+    pod: checkout-api-ee11
+    level: error
+    occurrences: 400
+  - ts: '2026-07-26T03:07:00Z'
+    line: circuit breaker open for payments-gateway
+    pod: checkout-api-ee11
+    level: error
+    occurrences: 400
+  - ts: '2026-07-26T03:14:00Z'
+    line: upstream_connection_refused recorded
+    pod: checkout-api-ee11
+    level: error
+    occurrences: 400
+  get_traces:
+  - trace_id: abc123def456
+    root_service: checkout-api
+    root_operation: POST /checkout
+    duration_ms: 30012
+  search_runbooks: []

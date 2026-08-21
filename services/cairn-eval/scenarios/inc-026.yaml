@@ -1,0 +1,152 @@
+id: inc-026
+title: Cause lives in a third-party system Cairn cannot see
+archetype: unsolvable
+solvable: false
+question: why did all outbound payment authorisations fail at 03:40?
+ground_truth:
+  root_cause: Not determinable from the available evidence. The provider had an incident; nothing inside
+    the cluster shows why.
+  causal_service: null
+  contributing_deploy: null
+  required_evidence: []
+distractors:
+- the local timeout, which is the symptom of a remote fault
+world:
+  get_deploy_timeline: []
+  query_metrics:
+  - metric: http_requests_total
+    labels: app=payments-api,status=504
+    points: 60
+    min: 0
+    max: 300
+    mean: 150.0
+    first: 0
+    last: 300
+    series:
+    - - 0
+      - 0
+    - - 1
+      - 0
+    - - 2
+      - 0
+    - - 3
+      - 0
+    - - 4
+      - 0
+    - - 5
+      - 0
+    - - 6
+      - 0
+    - - 7
+      - 0
+    - - 8
+      - 0
+    - - 9
+      - 0
+    - - 10
+      - 0
+    - - 11
+      - 0
+    - - 12
+      - 0
+    - - 13
+      - 0
+    - - 14
+      - 0
+    - - 15
+      - 0
+    - - 16
+      - 0
+    - - 17
+      - 0
+    - - 18
+      - 0
+    - - 19
+      - 0
+    - - 20
+      - 0
+    - - 21
+      - 0
+    - - 22
+      - 0
+    - - 23
+      - 0
+    - - 24
+      - 0
+    - - 25
+      - 0
+    - - 26
+      - 0
+    - - 27
+      - 0
+    - - 28
+      - 0
+    - - 29
+      - 0
+    - - 30
+      - 300
+    - - 31
+      - 300
+    - - 32
+      - 300
+    - - 33
+      - 300
+    - - 34
+      - 300
+    - - 35
+      - 300
+    - - 36
+      - 300
+    - - 37
+      - 300
+    - - 38
+      - 300
+    - - 39
+      - 300
+    - - 40
+      - 300
+    - - 41
+      - 300
+    - - 42
+      - 300
+    - - 43
+      - 300
+    - - 44
+      - 300
+    - - 45
+      - 300
+    - - 46
+      - 300
+    - - 47
+      - 300
+    - - 48
+      - 300
+    - - 49
+      - 300
+    - - 50
+      - 300
+    - - 51
+      - 300
+    - - 52
+      - 300
+    - - 53
+      - 300
+    - - 54
+      - 300
+    - - 55
+      - 300
+    - - 56
+      - 300
+    - - 57
+      - 300
+    - - 58
+      - 300
+    - - 59
+      - 300
+  query_logs:
+  - ts: '2026-07-26T03:00:00Z'
+    line: gateway timeout from provider
+    pod: payments-api-99xx
+    level: error
+    occurrences: 5
+  search_runbooks: []

@@ -1,0 +1,276 @@
+id: inc-028
+title: The alert contradicts the underlying data
+archetype: unsolvable
+solvable: false
+question: HighErrorRate fired for inventory-api at 03:50, what is wrong?
+ground_truth:
+  root_cause: Not determinable from the available evidence. The alert rule is misconfigured; the metric
+    it fires on is healthy.
+  causal_service: null
+  contributing_deploy: null
+  required_evidence: []
+distractors:
+- the alert firing, which is evidence about the alert and not the service
+world:
+  get_deploy_timeline: []
+  query_metrics:
+  - metric: http_requests_total
+    labels: app=inventory-api,status=500
+    points: 60
+    min: 0
+    max: 0
+    mean: 0.0
+    first: 0
+    last: 0
+    series:
+    - - 0
+      - 0
+    - - 1
+      - 0
+    - - 2
+      - 0
+    - - 3
+      - 0
+    - - 4
+      - 0
+    - - 5
+      - 0
+    - - 6
+      - 0
+    - - 7
+      - 0
+    - - 8
+      - 0
+    - - 9
+      - 0
+    - - 10
+      - 0
+    - - 11
+      - 0
+    - - 12
+      - 0
+    - - 13
+      - 0
+    - - 14
+      - 0
+    - - 15
+      - 0
+    - - 16
+      - 0
+    - - 17
+      - 0
+    - - 18
+      - 0
+    - - 19
+      - 0
+    - - 20
+      - 0
+    - - 21
+      - 0
+    - - 22
+      - 0
+    - - 23
+      - 0
+    - - 24
+      - 0
+    - - 25
+      - 0
+    - - 26
+      - 0
+    - - 27
+      - 0
+    - - 28
+      - 0
+    - - 29
+      - 0
+    - - 30
+      - 0
+    - - 31
+      - 0
+    - - 32
+      - 0
+    - - 33
+      - 0
+    - - 34
+      - 0
+    - - 35
+      - 0
+    - - 36
+      - 0
+    - - 37
+      - 0
+    - - 38
+      - 0
+    - - 39
+      - 0
+    - - 40
+      - 0
+    - - 41
+      - 0
+    - - 42
+      - 0
+    - - 43
+      - 0
+    - - 44
+      - 0
+    - - 45
+      - 0
+    - - 46
+      - 0
+    - - 47
+      - 0
+    - - 48
+      - 0
+    - - 49
+      - 0
+    - - 50
+      - 0
+    - - 51
+      - 0
+    - - 52
+      - 0
+    - - 53
+      - 0
+    - - 54
+      - 0
+    - - 55
+      - 0
+    - - 56
+      - 0
+    - - 57
+      - 0
+    - - 58
+      - 0
+    - - 59
+      - 0
+  - metric: http_requests_total
+    labels: app=inventory-api
+    points: 60
+    min: 800
+    max: 810
+    mean: 805.0
+    first: 800
+    last: 810
+    series:
+    - - 0
+      - 800
+    - - 1
+      - 800
+    - - 2
+      - 800
+    - - 3
+      - 800
+    - - 4
+      - 800
+    - - 5
+      - 800
+    - - 6
+      - 800
+    - - 7
+      - 800
+    - - 8
+      - 800
+    - - 9
+      - 800
+    - - 10
+      - 800
+    - - 11
+      - 800
+    - - 12
+      - 800
+    - - 13
+      - 800
+    - - 14
+      - 800
+    - - 15
+      - 800
+    - - 16
+      - 800
+    - - 17
+      - 800
+    - - 18
+      - 800
+    - - 19
+      - 800
+    - - 20
+      - 800
+    - - 21
+      - 800
+    - - 22
+      - 800
+    - - 23
+      - 800
+    - - 24
+      - 800
+    - - 25
+      - 800
+    - - 26
+      - 800
+    - - 27
+      - 800
+    - - 28
+      - 800
+    - - 29
+      - 800
+    - - 30
+      - 810
+    - - 31
+      - 810
+    - - 32
+      - 810
+    - - 33
+      - 810
+    - - 34
+      - 810
+    - - 35
+      - 810
+    - - 36
+      - 810
+    - - 37
+      - 810
+    - - 38
+      - 810
+    - - 39
+      - 810
+    - - 40
+      - 810
+    - - 41
+      - 810
+    - - 42
+      - 810
+    - - 43
+      - 810
+    - - 44
+      - 810
+    - - 45
+      - 810
+    - - 46
+      - 810
+    - - 47
+      - 810
+    - - 48
+      - 810
+    - - 49
+      - 810
+    - - 50
+      - 810
+    - - 51
+      - 810
+    - - 52
+      - 810
+    - - 53
+      - 810
+    - - 54
+      - 810
+    - - 55
+      - 810
+    - - 56
+      - 810
+    - - 57
+      - 810
+    - - 58
+      - 810
+    - - 59
+      - 810
+  query_logs: []
+  search_runbooks: []

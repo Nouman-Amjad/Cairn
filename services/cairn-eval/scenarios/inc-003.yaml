@@ -1,0 +1,429 @@
+id: inc-003
+title: Memory leak producing OOMKills between restarts
+archetype: memory_leak_oom
+solvable: true
+question: search-api keeps restarting since about 02:40, why?
+ground_truth:
+  root_cause: 'A memory leak in search-api: the working set climbs steadily between restarts until it
+    crosses the container limit and the kubelet OOMKills the pod. Not a burst — the sawtooth is monotonic.'
+  causal_service: search-api
+  contributing_deploy: null
+  required_evidence:
+  - metric: container_memory_working_set_bytes
+  - log_pattern: OutOfMemoryError
+  - event: oom_kill
+distractors:
+- a routine deploy six days ago
+- elevated GC time on cart-service
+world:
+  get_deploy_timeline:
+  - at: '2026-07-20T00:00:00Z'
+    revision: 0011aabbccdd
+    source: argocd
+    service: search-api
+    creator: rmoore
+  query_metrics:
+  - metric: container_memory_working_set_bytes
+    labels: pod=search-api-a1b2
+    points: 60
+    min: 410000000.0
+    max: 1060000000.0
+    mean: 735000000.0
+    first: 410000000.0
+    last: 1060000000.0
+    series:
+    - - 0
+      - 410000000.0
+    - - 1
+      - 410000000.0
+    - - 2
+      - 410000000.0
+    - - 3
+      - 410000000.0
+    - - 4
+      - 410000000.0
+    - - 5
+      - 410000000.0
+    - - 6
+      - 410000000.0
+    - - 7
+      - 410000000.0
+    - - 8
+      - 410000000.0
+    - - 9
+      - 410000000.0
+    - - 10
+      - 410000000.0
+    - - 11
+      - 410000000.0
+    - - 12
+      - 410000000.0
+    - - 13
+      - 410000000.0
+    - - 14
+      - 410000000.0
+    - - 15
+      - 410000000.0
+    - - 16
+      - 410000000.0
+    - - 17
+      - 410000000.0
+    - - 18
+      - 410000000.0
+    - - 19
+      - 410000000.0
+    - - 20
+      - 410000000.0
+    - - 21
+      - 410000000.0
+    - - 22
+      - 410000000.0
+    - - 23
+      - 410000000.0
+    - - 24
+      - 410000000.0
+    - - 25
+      - 410000000.0
+    - - 26
+      - 410000000.0
+    - - 27
+      - 410000000.0
+    - - 28
+      - 410000000.0
+    - - 29
+      - 410000000.0
+    - - 30
+      - 1060000000.0
+    - - 31
+      - 1060000000.0
+    - - 32
+      - 1060000000.0
+    - - 33
+      - 1060000000.0
+    - - 34
+      - 1060000000.0
+    - - 35
+      - 1060000000.0
+    - - 36
+      - 1060000000.0
+    - - 37
+      - 1060000000.0
+    - - 38
+      - 1060000000.0
+    - - 39
+      - 1060000000.0
+    - - 40
+      - 1060000000.0
+    - - 41
+      - 1060000000.0
+    - - 42
+      - 1060000000.0
+    - - 43
+      - 1060000000.0
+    - - 44
+      - 1060000000.0
+    - - 45
+      - 1060000000.0
+    - - 46
+      - 1060000000.0
+    - - 47
+      - 1060000000.0
+    - - 48
+      - 1060000000.0
+    - - 49
+      - 1060000000.0
+    - - 50
+      - 1060000000.0
+    - - 51
+      - 1060000000.0
+    - - 52
+      - 1060000000.0
+    - - 53
+      - 1060000000.0
+    - - 54
+      - 1060000000.0
+    - - 55
+      - 1060000000.0
+    - - 56
+      - 1060000000.0
+    - - 57
+      - 1060000000.0
+    - - 58
+      - 1060000000.0
+    - - 59
+      - 1060000000.0
+  - metric: kube_pod_container_status_restarts_total
+    labels: pod=search-api-a1b2
+    points: 60
+    min: 0
+    max: 7
+    mean: 3.5
+    first: 0
+    last: 7
+    series:
+    - - 0
+      - 0
+    - - 1
+      - 0
+    - - 2
+      - 0
+    - - 3
+      - 0
+    - - 4
+      - 0
+    - - 5
+      - 0
+    - - 6
+      - 0
+    - - 7
+      - 0
+    - - 8
+      - 0
+    - - 9
+      - 0
+    - - 10
+      - 0
+    - - 11
+      - 0
+    - - 12
+      - 0
+    - - 13
+      - 0
+    - - 14
+      - 0
+    - - 15
+      - 0
+    - - 16
+      - 0
+    - - 17
+      - 0
+    - - 18
+      - 0
+    - - 19
+      - 0
+    - - 20
+      - 0
+    - - 21
+      - 0
+    - - 22
+      - 0
+    - - 23
+      - 0
+    - - 24
+      - 0
+    - - 25
+      - 0
+    - - 26
+      - 0
+    - - 27
+      - 0
+    - - 28
+      - 0
+    - - 29
+      - 0
+    - - 30
+      - 7
+    - - 31
+      - 7
+    - - 32
+      - 7
+    - - 33
+      - 7
+    - - 34
+      - 7
+    - - 35
+      - 7
+    - - 36
+      - 7
+    - - 37
+      - 7
+    - - 38
+      - 7
+    - - 39
+      - 7
+    - - 40
+      - 7
+    - - 41
+      - 7
+    - - 42
+      - 7
+    - - 43
+      - 7
+    - - 44
+      - 7
+    - - 45
+      - 7
+    - - 46
+      - 7
+    - - 47
+      - 7
+    - - 48
+      - 7
+    - - 49
+      - 7
+    - - 50
+      - 7
+    - - 51
+      - 7
+    - - 52
+      - 7
+    - - 53
+      - 7
+    - - 54
+      - 7
+    - - 55
+      - 7
+    - - 56
+      - 7
+    - - 57
+      - 7
+    - - 58
+      - 7
+    - - 59
+      - 7
+  - metric: jvm_gc_pause_seconds
+    labels: app=cart-service
+    points: 60
+    min: 0.02
+    max: 0.09
+    mean: 0.055
+    first: 0.02
+    last: 0.09
+    series:
+    - - 0
+      - 0.02
+    - - 1
+      - 0.02
+    - - 2
+      - 0.02
+    - - 3
+      - 0.02
+    - - 4
+      - 0.02
+    - - 5
+      - 0.02
+    - - 6
+      - 0.02
+    - - 7
+      - 0.02
+    - - 8
+      - 0.02
+    - - 9
+      - 0.02
+    - - 10
+      - 0.02
+    - - 11
+      - 0.02
+    - - 12
+      - 0.02
+    - - 13
+      - 0.02
+    - - 14
+      - 0.02
+    - - 15
+      - 0.02
+    - - 16
+      - 0.02
+    - - 17
+      - 0.02
+    - - 18
+      - 0.02
+    - - 19
+      - 0.02
+    - - 20
+      - 0.02
+    - - 21
+      - 0.02
+    - - 22
+      - 0.02
+    - - 23
+      - 0.02
+    - - 24
+      - 0.02
+    - - 25
+      - 0.02
+    - - 26
+      - 0.02
+    - - 27
+      - 0.02
+    - - 28
+      - 0.02
+    - - 29
+      - 0.02
+    - - 30
+      - 0.09
+    - - 31
+      - 0.09
+    - - 32
+      - 0.09
+    - - 33
+      - 0.09
+    - - 34
+      - 0.09
+    - - 35
+      - 0.09
+    - - 36
+      - 0.09
+    - - 37
+      - 0.09
+    - - 38
+      - 0.09
+    - - 39
+      - 0.09
+    - - 40
+      - 0.09
+    - - 41
+      - 0.09
+    - - 42
+      - 0.09
+    - - 43
+      - 0.09
+    - - 44
+      - 0.09
+    - - 45
+      - 0.09
+    - - 46
+      - 0.09
+    - - 47
+      - 0.09
+    - - 48
+      - 0.09
+    - - 49
+      - 0.09
+    - - 50
+      - 0.09
+    - - 51
+      - 0.09
+    - - 52
+      - 0.09
+    - - 53
+      - 0.09
+    - - 54
+      - 0.09
+    - - 55
+      - 0.09
+    - - 56
+      - 0.09
+    - - 57
+      - 0.09
+    - - 58
+      - 0.09
+    - - 59
+      - 0.09
+  query_logs:
+  - ts: '2026-07-26T03:00:00Z'
+    line: 'java.lang.OutOfMemoryError: Java heap space'
+    pod: search-api-a1b2
+    level: error
+    occurrences: 400
+  - ts: '2026-07-26T03:07:00Z'
+    line: Container killed due to memory limit (OOMKilled), oom_kill event recorded
+    pod: search-api-a1b2
+    level: error
+    occurrences: 400
+  search_runbooks:
+  - doc_id: runbooks/oom.md
+    title: OOMKilled pods
+    content: A working set climbing steadily between restarts indicates a leak rather than a burst. Raising
+      the limit is a stopgap, not a fix.
+    matched_by: 'semantic #1 + keyword #1'
