@@ -1,0 +1,153 @@
+{{/*
+Default deny, then the narrowest possible allowances.
+
+The single highest-leverage control in the design is the orchestrator's
+egress list below: the component with model-controlled behaviour has no route
+to the internet at all. Every external call it wants goes through a service
+with a fixed, schema-validated interface.
+*/}}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns
+spec:
+  podSelector: {}
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: kube-system }
+      ports:
+        - { port: 53, protocol: UDP }
+        - { port: 53, protocol: TCP }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: orchestrator-egress
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: cairn-orchestrator }
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: cairn-router }
+    - to:
+        - podSelector:
+            matchLabels: { tier: mcp }
+    - to:
+        - ipBlock: { cidr: {{ .Values.network.databaseCidr | default "10.0.32.0/20" }} }
+      ports:
+        - { port: {{ .Values.database.port }}, protocol: TCP }
+        - { port: {{ .Values.redis.port }}, protocol: TCP }
+    - to:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: kube-system }
+      ports:
+        - { port: 53, protocol: UDP }
+    # No 0.0.0.0/0. Deliberately. If a prompt injection convinces the agent
+    # to exfiltrate something, there is nowhere for it to send it.
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: router-egress
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: cairn-router }
+  policyTypes: [Egress]
+  egress:
+    - to:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: cairn-vllm }
+    # The only pod permitted to reach the frontier model API, and the only
+    # one holding the key.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 169.254.169.254/32 # IMDS
+      ports:
+        - { port: 443, protocol: TCP }
+    - to:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: kube-system }
+      ports:
+        - { port: 53, protocol: UDP }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mcp-ingress
+spec:
+  podSelector:
+    matchLabels: { tier: mcp }
+  policyTypes: [Ingress]
+  ingress:
+    # Tool servers accept calls from the orchestrator only. The approval
+    # service reaches mcp-actions on its own policy below.
+    - from:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: cairn-orchestrator }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: actions-ingress
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: cairn-mcp-actions }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: cairn-orchestrator }
+    # /internal/execute: only the approval service, and it must still present
+    # a token minted with its own identity.
+    - from:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: cairn-approval }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: gateway-ingress
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: cairn-gateway }
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: ingress }
+    - from:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: cairn-ui }
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: vllm-ingress
+spec:
+  podSelector:
+    matchLabels: { app.kubernetes.io/name: cairn-vllm }
+  policyTypes: [Ingress]
+  ingress:
+    # The router, and nothing else. An orchestrator that could reach vLLM
+    # directly would bypass the routing policy — including the rule that
+    # keeps restricted data off the cloud.
+    - from:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/name: cairn-router }

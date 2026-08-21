@@ -1,0 +1,36 @@
+# Local / dev cluster. Scale-to-zero everywhere, no HA, no real IdP.
+global:
+  env: dev
+  image: { tag: "dev" }
+  uiBaseUrl: http://localhost:3000
+  logLevel: DEBUG
+
+auth:
+  # Trusts an identity header. The gateway refuses to start with this in prod.
+  devMode: true
+
+policy:
+  enabled: true
+  bundleUrl: http://cairn-policy-bundle/bundles
+
+vllm:
+  scaling:
+    minReplicas: 0
+    maxReplicas: 1
+    cooldownSeconds: 300
+
+services:
+  gateway: { replicas: 1, autoscale: { enabled: false } }
+  orchestrator: { replicas: 1, autoscale: { enabled: false } }
+  router: { replicas: 1, autoscale: { enabled: false } }
+  approval: { replicas: 1 }
+  mcp-observability: { replicas: 1, autoscale: { enabled: false } }
+  mcp-runbooks: { replicas: 1, autoscale: { enabled: false } }
+  mcp-actions: { replicas: 1 }
+  ui: { replicas: 1, autoscale: { enabled: false } }
+
+rollout:
+  enabled: false
+
+budgets:
+  maxDailyCostPerUserUsd: "5.0"

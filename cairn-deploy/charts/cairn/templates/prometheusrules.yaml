@@ -1,0 +1,65 @@
+{{/* Alerts from the architecture doc's metrics table. */}}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: cairn
+  labels: { release: kube-prometheus-stack }
+spec:
+  groups:
+    - name: cairn.slo
+      rules:
+        - alert: CairnUnapprovedWrite
+          # No error budget. One occurrence is an incident regardless of rate.
+          expr: increase(cairn_unapproved_write_total[5m]) > 0
+          for: 0m
+          labels: { severity: page }
+          annotations:
+            summary: "A write executed without an approval record"
+
+        - alert: CairnTrajectoryLatencyHigh
+          expr: histogram_quantile(0.95, sum(rate(cairn_trajectory_duration_seconds_bucket[10m])) by (le)) > 60
+          for: 10m
+          labels: { severity: ticket }
+
+        - alert: CairnCostPerQueryHigh
+          expr: |
+            sum(rate(cairn_trajectory_cost_usd_sum[1h]))
+            / clamp_min(sum(rate(cairn_trajectory_cost_usd_count[1h])), 0.001) > 0.90
+          for: 1h
+          labels: { severity: ticket }
+          annotations:
+            summary: "Mean cost per trajectory above $0.90"
+
+        - alert: CairnLocalShareLow
+          # The router's whole value proposition, as an alert.
+          expr: |
+            sum(rate(cairn_route_decisions_total{route="local"}[30m]))
+            / clamp_min(sum(rate(cairn_route_decisions_total[30m])), 0.001) < 0.55
+          for: 30m
+          labels: { severity: ticket }
+
+        - alert: CairnTrajectoryFailureRate
+          expr: |
+            sum(rate(cairn_trajectory_terminal_total{state="FAILED"}[15m]))
+            / clamp_min(sum(rate(cairn_trajectory_terminal_total[15m])), 0.001) > 0.05
+          for: 15m
+          labels: { severity: page }
+
+        - alert: CairnApprovalsExpiring
+          expr: increase(cairn_approval_expired_total[24h]) > 3
+          labels: { severity: ticket }
+          annotations:
+            summary: "Approvals are timing out; nobody is watching the channel"
+
+        - alert: CairnVllmPreempting
+          expr: increase(vllm:num_preemptions_total[10m]) > 0
+          for: 10m
+          labels: { severity: ticket }
+          annotations:
+            summary: "vLLM is preempting sequences; KV cache is undersized"
+
+        - alert: CairnColdStartSpills
+          expr: increase(cairn_cold_start_spills_total[24h]) > 20
+          labels: { severity: ticket }
+          annotations:
+            summary: "Frequent cold-start spills to cloud; consider a warm pool"

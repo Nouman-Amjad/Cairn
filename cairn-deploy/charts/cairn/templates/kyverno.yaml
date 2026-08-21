@@ -1,0 +1,66 @@
+{{/*
+Admission policy. Belt and braces over the pod specs this chart already
+renders — the chart is not the only thing that can create a pod in this
+namespace.
+*/}}
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: cairn-baseline
+spec:
+  validationFailureAction: Enforce
+  background: true
+  rules:
+    - name: signed-images-only
+      match:
+        any:
+          - resources:
+              kinds: [Pod]
+              namespaces: [cairn]
+      verifyImages:
+        - imageReferences:
+            - "{{ .Values.global.image.registry }}/cairn-*"
+          attestors:
+            - entries:
+                - keyless:
+                    subject: "https://github.com/Nouman-Amjad/cairn/*"
+                    issuer: "https://token.actions.githubusercontent.com"
+
+    - name: no-latest-tag
+      match:
+        any:
+          - resources: { kinds: [Pod], namespaces: [cairn] }
+      validate:
+        message: "Images must carry an immutable tag; ':latest' is not a version."
+        pattern:
+          spec:
+            containers:
+              - image: "!*:latest"
+
+    - name: no-privileged
+      match:
+        any:
+          - resources: { kinds: [Pod], namespaces: [cairn] }
+      validate:
+        message: "Privileged containers are not permitted."
+        pattern:
+          spec:
+            =(securityContext):
+              =(runAsNonRoot): true
+            containers:
+              - =(securityContext):
+                  =(privileged): "false"
+                  =(allowPrivilegeEscalation): "false"
+
+    - name: resources-required
+      match:
+        any:
+          - resources: { kinds: [Pod], namespaces: [cairn] }
+      validate:
+        message: "Every container needs a memory limit and a CPU request."
+        pattern:
+          spec:
+            containers:
+              - resources:
+                  requests: { cpu: "?*" }
+                  limits: { memory: "?*" }

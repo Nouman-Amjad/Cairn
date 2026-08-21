@@ -1,0 +1,47 @@
+{{- if .Values.ingest.enabled }}
+{{/*
+Runbook ingest. Re-running is cheap: unchanged documents cost one content
+hash, not one embedding call.
+*/}}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cairn-ingest
+spec:
+  schedule: {{ .Values.ingest.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          serviceAccountName: cairn-mcp-runbooks
+          securityContext:
+            {{- include "cairn.podSecurity" . | nindent 12 }}
+          initContainers:
+            - name: clone
+              image: alpine/git:2.45.2
+              args: ["clone", "--depth", "1", {{ .Values.ingest.repoUrl | quote }}, "/docs"]
+              volumeMounts: [{ name: docs, mountPath: /docs }]
+          containers:
+            - name: ingest
+              image: {{ .Values.global.image.registry }}/cairn-mcp-runbooks:{{ .Values.global.image.tag }}
+              command:
+                - cairn-ingest
+                - /docs
+                - --url-prefix={{ .Values.ingest.urlPrefix }}
+              env:
+                {{- include "cairn.env" (dict "root" $) | nindent 16 }}
+              volumeMounts:
+                - { name: docs, mountPath: /docs }
+                - { name: tmp, mountPath: /tmp }
+              resources:
+                requests: { cpu: 200m, memory: 512Mi }
+                limits: { memory: 1Gi }
+          volumes:
+            - { name: docs, emptyDir: {} }
+            - { name: tmp, emptyDir: {} }
+{{- end }}

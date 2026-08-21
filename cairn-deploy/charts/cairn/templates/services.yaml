@@ -1,0 +1,208 @@
+{{/*
+One template for every service. Deployment + Service + HPA + PDB.
+
+Rendering nine near-identical manifests by hand is how a security default
+ends up applied to eight of them.
+*/}}
+{{- range $name, $svc := .Values.services }}
+{{- $fullName := printf "cairn-%s" $name }}
+{{- $port := default 8000 $svc.port }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $fullName }}
+  labels:
+    {{- include "cairn.labels" (dict "name" $name "svc" $svc "root" $) | nindent 4 }}
+spec:
+  {{- if not (and $svc.autoscale $svc.autoscale.enabled) }}
+  replicas: {{ $svc.replicas }}
+  {{- end }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $fullName }}
+  strategy:
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ $fullName }}
+        app.kubernetes.io/part-of: cairn
+        {{- if $svc.tier }}
+        tier: {{ $svc.tier }}
+        {{- end }}
+      annotations:
+        # Roll the pods when the prompt or routing ConfigMaps change. Without
+        # this a prompt edit sits in Git looking applied and is not.
+        checksum/config: {{ toJson $.Values.backends | sha256sum | trunc 16 }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: {{ $port | quote }}
+    spec:
+      serviceAccountName: {{ $fullName }}
+      securityContext:
+        {{- include "cairn.podSecurity" . | nindent 8 }}
+      terminationGracePeriodSeconds: {{ default 30 $svc.terminationGracePeriodSeconds }}
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: {{ $fullName }}
+      containers:
+        - name: app
+          image: {{ include "cairn.image" (dict "svc" $svc "root" $) }}
+          imagePullPolicy: {{ $.Values.global.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ $port }}
+          securityContext:
+            {{- include "cairn.containerSecurity" . | nindent 12 }}
+          env:
+            {{- include "cairn.env" (dict "root" $) | nindent 12 }}
+            {{- if eq $name "mcp-observability" }}
+            {{- include "cairn.backendEnv" $ | nindent 12 }}
+            {{- end }}
+            {{- if eq $name "mcp-actions" }}
+            {{- include "cairn.backendEnv" $ | nindent 12 }}
+            - name: CAIRN_BACKEND_JIRA_TOKEN
+              valueFrom: { secretKeyRef: { name: cairn-jira, key: token } }
+            - name: CAIRN_BACKEND_ARGOCD_TOKEN
+              valueFrom: { secretKeyRef: { name: cairn-argocd, key: token } }
+            - name: CAIRN_APPROVAL_SLACK_BOT_TOKEN
+              valueFrom: { secretKeyRef: { name: cairn-slack, key: bot-token } }
+            {{- end }}
+            {{- if eq $name "router" }}
+            # The only pod in the cluster that can read this secret.
+            - name: CAIRN_ROUTER_ANTHROPIC_API_KEY
+              valueFrom: { secretKeyRef: { name: cairn-anthropic, key: api-key } }
+            - name: CAIRN_ROUTER_VLLM_URL
+              value: http://cairn-vllm:8000/v1
+            - name: CAIRN_ROUTER_POLICY_PATH
+              value: /etc/cairn/routing/policy.yaml
+            - name: CAIRN_ROUTER_PRICES_PATH
+              value: /etc/cairn/routing/prices.yaml
+            {{- end }}
+            {{- if eq $name "approval" }}
+            - name: CAIRN_APPROVAL_SLACK_BOT_TOKEN
+              valueFrom: { secretKeyRef: { name: cairn-slack, key: bot-token } }
+            - name: CAIRN_APPROVAL_SLACK_SIGNING_SECRET
+              valueFrom: { secretKeyRef: { name: cairn-slack, key: signing-secret } }
+            {{- end }}
+            {{- if eq $name "ui" }}
+            - name: NEXT_PUBLIC_GATEWAY_URL
+              value: https://{{ $.Values.ingress.host }}/api
+            {{- end }}
+          volumeMounts:
+            - { name: prompts, mountPath: /etc/cairn/prompts, readOnly: true }
+            - { name: tmp, mountPath: /tmp }
+            {{- if $svc.configMounts }}
+            - { name: routing, mountPath: /etc/cairn/routing, readOnly: true }
+            {{- end }}
+          resources:
+            {{- toYaml $svc.resources | nindent 12 }}
+          startupProbe:
+            httpGet: { path: /healthz, port: http }
+            failureThreshold: 30
+            periodSeconds: 2
+          readinessProbe:
+            httpGet: { path: {{ if eq $name "ui" }}/{{ else }}/readyz{{ end }}, port: http }
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet: { path: {{ if eq $name "ui" }}/{{ else }}/healthz{{ end }}, port: http }
+            periodSeconds: 15
+            failureThreshold: 4
+        {{- if $svc.opaSidecar }}
+        # OPA runs as a sidecar so an authorization decision is a localhost
+        # call, not a network dependency that can fail open under load.
+        - name: opa
+          image: {{ $.Values.policy.opaImage }}
+          args:
+            - run
+            - --server
+            - --addr=127.0.0.1:8181
+            - --set=services.bundles.url={{ $.Values.policy.bundleUrl }}
+            - --set=bundles.cairn.service=bundles
+            - --set=bundles.cairn.resource=cairn.tar.gz
+            - --set=bundles.cairn.polling.min_delay_seconds=30
+            - --set=decision_logs.console=true
+          securityContext:
+            {{- include "cairn.containerSecurity" . | nindent 12 }}
+          resources:
+            requests: { cpu: 50m, memory: 96Mi }
+            limits: { memory: 192Mi }
+          readinessProbe:
+            httpGet: { path: /health?bundle=true, port: 8181 }
+            periodSeconds: 5
+        {{- end }}
+      volumes:
+        - name: prompts
+          configMap: { name: cairn-prompts }
+        - name: tmp
+          emptyDir: {}
+        {{- if $svc.configMounts }}
+        - name: routing
+          configMap: { name: cairn-routing }
+        {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $fullName }}
+  labels:
+    app.kubernetes.io/name: {{ $fullName }}
+spec:
+  selector:
+    app.kubernetes.io/name: {{ $fullName }}
+  ports:
+    - name: http
+      port: {{ $port }}
+      targetPort: http
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $fullName }}
+  annotations:
+    {{- with $.Values.serviceAccount.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    eks.amazonaws.com/role-arn: arn:aws:iam::{{ $.Values.global.awsAccountId | default "123456789012" }}:role/cairn-{{ $name }}-{{ $.Values.global.env }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ $fullName }}
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ $fullName }}
+{{- if and $svc.autoscale $svc.autoscale.enabled }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $fullName }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ $fullName }}
+  minReplicas: {{ $svc.autoscale.min }}
+  maxReplicas: {{ $svc.autoscale.max }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: {{ $svc.autoscale.cpu }} }
+  behavior:
+    scaleDown:
+      # Slow to shrink. An orchestrator pod holding a live investigation is
+      # expensive to lose and cheap to keep.
+      stabilizationWindowSeconds: 300
+{{- end }}
+{{- end }}

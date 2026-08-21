@@ -1,0 +1,92 @@
+{{- if .Values.rollout.enabled }}
+{{/*
+Progressive delivery for the two services where a bad release is most
+expensive: the gateway (everyone sees it) and the orchestrator (it decides
+what the agent does and what it spends).
+
+The analysis gates on error rate, p95 latency and — the one people leave out
+— mean cost per trajectory.
+*/}}
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: cairn-canary
+spec:
+  args:
+    - name: service
+  metrics:
+    - name: error-rate
+      interval: 60s
+      count: 5
+      successCondition: result[0] <= {{ .Values.rollout.analysis.errorRateThreshold }}
+      failureLimit: 1
+      provider:
+        prometheus:
+          address: {{ .Values.backends.prometheusUrl }}
+          query: |
+            sum(rate(http_requests_total{app="{{`{{args.service}}`}}",status=~"5.."}[2m]))
+            /
+            clamp_min(sum(rate(http_requests_total{app="{{`{{args.service}}`}}"}[2m])), 0.001)
+
+    - name: p95-latency
+      interval: 60s
+      count: 5
+      successCondition: result[0] <= {{ .Values.rollout.analysis.p95LatencyThresholdSeconds }}
+      failureLimit: 1
+      provider:
+        prometheus:
+          address: {{ .Values.backends.prometheusUrl }}
+          query: |
+            histogram_quantile(0.95,
+              sum(rate(cairn_trajectory_duration_seconds_bucket[5m])) by (le))
+
+    - name: mean-cost-per-trajectory
+      interval: 120s
+      count: 3
+      successCondition: result[0] <= {{ .Values.rollout.analysis.meanCostThresholdUsd }}
+      failureLimit: 1
+      provider:
+        prometheus:
+          address: {{ .Values.backends.prometheusUrl }}
+          query: |
+            sum(rate(cairn_trajectory_cost_usd_sum[10m]))
+            /
+            clamp_min(sum(rate(cairn_trajectory_cost_usd_count[10m])), 0.001)
+
+    - name: unapproved-writes
+      # There is no error budget for this one. Any non-zero value fails the
+      # canary immediately.
+      interval: 60s
+      count: 5
+      successCondition: result[0] == 0
+      failureLimit: 0
+      provider:
+        prometheus:
+          address: {{ .Values.backends.prometheusUrl }}
+          query: sum(increase(cairn_unapproved_write_total[5m])) or vector(0)
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: cairn-gateway
+spec:
+  replicas: {{ .Values.services.gateway.replicas }}
+  workloadRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: cairn-gateway
+  strategy:
+    canary:
+      steps:
+        - setWeight: 10
+        - pause: { duration: 5m }
+        - analysis:
+            templates: [{ templateName: cairn-canary }]
+            args: [{ name: service, value: cairn-gateway }]
+        - setWeight: 50
+        - pause: { duration: 10m }
+        - analysis:
+            templates: [{ templateName: cairn-canary }]
+            args: [{ name: service, value: cairn-gateway }]
+        - setWeight: 100
+{{- end }}
