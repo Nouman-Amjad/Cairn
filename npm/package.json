@@ -1,5 +1,5 @@
 {
-  "name": "cairn",
+  "name": "@nouman-amjad/cairn",
   "version": "0.1.0",
   "description": "Platform analysis, a live dashboard and log chat for any project. Zero dependencies.",
   "type": "module",
@@ -11,22 +11,43 @@
     "url": "git+https://github.com/Nouman-Amjad/cairn.git",
     "directory": "npm"
   },
-  "bugs": { "url": "https://github.com/Nouman-Amjad/cairn/issues" },
+  "bugs": {
+    "url": "https://github.com/Nouman-Amjad/cairn/issues"
+  },
   "keywords": [
-    "devops", "platform-engineering", "dashboard", "observability",
-    "incident-response", "kubernetes", "docker", "audit", "logs", "cli"
+    "devops",
+    "platform-engineering",
+    "dashboard",
+    "observability",
+    "incident-response",
+    "kubernetes",
+    "docker",
+    "audit",
+    "logs",
+    "cli"
   ],
-  "bin": { "cairn": "bin/cairn.js" },
+  "bin": {
+    "cairn": "bin/cairn.js"
+  },
   "exports": {
     ".": "./lib/index.js",
     "./analyze": "./lib/analyze/index.js"
   },
-  "files": ["bin", "lib", "README.md", "LICENSE"],
-  "engines": { "node": ">=18.17" },
+  "files": [
+    "bin",
+    "lib",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18.17"
+  },
   "scripts": {
     "test": "node --test \"test/*.test.js\"",
     "start": "node bin/cairn.js dashboard"
   },
   "dependencies": {},
-  "publishConfig": { "access": "public" }
+  "publishConfig": {
+    "access": "public"
+  }
 }

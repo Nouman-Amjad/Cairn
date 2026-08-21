@@ -4,10 +4,17 @@ Platform analysis, a live dashboard and log chat for any project.
 **Zero dependencies.** Node 18.17+.
 
 ```bash
-npx cairn analyze
+npx @nouman-amjad/cairn analyze
 ```
 
 That is the whole first step. No config file, no signup, no API key.
+
+Install it once and the command shortens to `cairn`:
+
+```bash
+npm install -g @nouman-amjad/cairn
+cairn analyze
+```
 
 ```
 Cairn  /home/you/checkout-api
@@ -33,7 +40,7 @@ Cairn  /home/you/checkout-api
 ## The dashboard
 
 ```bash
-npx cairn dashboard
+npx @nouman-amjad/cairn dashboard  # or: cairn dashboard, if installed
 ```
 
 Opens on `http://127.0.0.1:7777` with six tabs:
@@ -54,7 +61,7 @@ chart.
 ## Configure it
 
 ```bash
-npx cairn init
+npx @nouman-amjad/cairn init  # or: cairn init, if installed
 ```
 
 Writes `cairn.config.json`, seeded from what it found — services it detected
@@ -82,9 +89,9 @@ get health-check entries already filled in. Everything is optional.
 Change any value from the Config tab, or:
 
 ```bash
-npx cairn config                      # list everything
-npx cairn config dashboard.port       # read one
-npx cairn config dashboard.port 9000  # write one
+cairn config                      # list everything
+cairn config dashboard.port       # read one
+cairn config dashboard.port 9000  # write one
 ```
 
 Values are coerced to the type the default declares, so `port` stays a number
@@ -93,8 +100,8 @@ and a typo is rejected at the point you make it rather than three layers down.
 ## Chat about your logs
 
 ```bash
-npx cairn chat "what should I fix first?"
-npx cairn chat "why are there errors?"
+cairn chat "what should I fix first?"
+cairn chat "why are there errors?"
 ```
 
 Three modes, set with `chat.mode`:
@@ -113,12 +120,12 @@ Three modes, set with `chat.mode`:
 ## In CI
 
 ```bash
-npx cairn analyze --fail-on high      # exit 1 if anything high is found
-npx cairn analyze --json > report.json
+npx @nouman-amjad/cairn analyze --fail-on high      # exit 1 if anything high is found
+npx @nouman-amjad/cairn analyze --json > report.json
 ```
 
 ```yaml
-- run: npx cairn analyze --fail-on high
+- run: npx @nouman-amjad/cairn analyze --fail-on high
 ```
 
 ## What it checks
@@ -142,7 +149,7 @@ risk" lives in the repository and shows up in review.
 ## As a library
 
 ```js
-import { analyze, load, exitCode } from "cairn";
+import { analyze, load, exitCode } from "@nouman-amjad/cairn";
 
 const report = analyze(load("."));
 console.log(report.score, report.findings.length);
@@ -155,7 +162,7 @@ Open `package.json` and look at `dependencies`. It is `{}`.
 
 A tool that audits your supply chain should not enlarge it. Everything here is
 Node's standard library: the dashboard is `node:http`, the log tail is
-`node:fs`, the CLI parses its own arguments. `npx cairn` downloads one small
+`node:fs`, the CLI parses its own arguments. `npx @nouman-amjad/cairn` downloads one small
 package and nothing else, and there is no transitive tree to review, upgrade,
 or get compromised.
 
