@@ -1,0 +1,147 @@
+id: inc-021
+title: Log retention expired before the question was asked
+archetype: unsolvable
+solvable: false
+question: why did checkout-api return errors last Tuesday around 04:00?
+ground_truth:
+  root_cause: Not determinable from the available evidence. The logs that would identify the cause aged
+    out of Loki.
+  causal_service: checkout-api
+  contributing_deploy: null
+  required_evidence: []
+distractors:
+- a deploy visible outside the retention window
+world:
+  get_deploy_timeline: []
+  query_metrics:
+  - metric: http_requests_total
+    labels: app=checkout-api,status=500
+    points: 60
+    min: 0
+    max: 180
+    mean: 90.0
+    first: 0
+    last: 180
+    series:
+    - - 0
+      - 0
+    - - 1
+      - 0
+    - - 2
+      - 0
+    - - 3
+      - 0
+    - - 4
+      - 0
+    - - 5
+      - 0
+    - - 6
+      - 0
+    - - 7
+      - 0
+    - - 8
+      - 0
+    - - 9
+      - 0
+    - - 10
+      - 0
+    - - 11
+      - 0
+    - - 12
+      - 0
+    - - 13
+      - 0
+    - - 14
+      - 0
+    - - 15
+      - 0
+    - - 16
+      - 0
+    - - 17
+      - 0
+    - - 18
+      - 0
+    - - 19
+      - 0
+    - - 20
+      - 0
+    - - 21
+      - 0
+    - - 22
+      - 0
+    - - 23
+      - 0
+    - - 24
+      - 0
+    - - 25
+      - 0
+    - - 26
+      - 0
+    - - 27
+      - 0
+    - - 28
+      - 0
+    - - 29
+      - 0
+    - - 30
+      - 180
+    - - 31
+      - 180
+    - - 32
+      - 180
+    - - 33
+      - 180
+    - - 34
+      - 180
+    - - 35
+      - 180
+    - - 36
+      - 180
+    - - 37
+      - 180
+    - - 38
+      - 180
+    - - 39
+      - 180
+    - - 40
+      - 180
+    - - 41
+      - 180
+    - - 42
+      - 180
+    - - 43
+      - 180
+    - - 44
+      - 180
+    - - 45
+      - 180
+    - - 46
+      - 180
+    - - 47
+      - 180
+    - - 48
+      - 180
+    - - 49
+      - 180
+    - - 50
+      - 180
+    - - 51
+      - 180
+    - - 52
+      - 180
+    - - 53
+      - 180
+    - - 54
+      - 180
+    - - 55
+      - 180
+    - - 56
+      - 180
+    - - 57
+      - 180
+    - - 58
+      - 180
+    - - 59
+      - 180
+  query_logs: []
+  search_runbooks: []

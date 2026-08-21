@@ -1,0 +1,424 @@
+id: inc-008
+title: Kafka consumer group thrashing
+archetype: queue_backlog
+solvable: true
+question: notification-worker is lagging badly since 02:50
+ground_truth:
+  root_cause: The notification-worker consumer group is stuck in a rebalance loop. Partitions are reassigned
+    faster than they can be processed, so committed offsets stall and lag grows without bound.
+  causal_service: notification-worker
+  contributing_deploy: null
+  required_evidence:
+  - metric: kafka_consumergroup_lag
+  - log_pattern: NoBrokersAvailable
+  - event: consumer_rebalance
+distractors:
+- a producer-side volume increase that is within normal range
+- an unrelated broker restart the previous day
+world:
+  get_deploy_timeline: []
+  query_metrics:
+  - metric: kafka_consumergroup_lag
+    labels: group=notification-worker
+    points: 60
+    min: 120
+    max: 480000
+    mean: 240060.0
+    first: 120
+    last: 480000
+    series:
+    - - 0
+      - 120
+    - - 1
+      - 120
+    - - 2
+      - 120
+    - - 3
+      - 120
+    - - 4
+      - 120
+    - - 5
+      - 120
+    - - 6
+      - 120
+    - - 7
+      - 120
+    - - 8
+      - 120
+    - - 9
+      - 120
+    - - 10
+      - 120
+    - - 11
+      - 120
+    - - 12
+      - 120
+    - - 13
+      - 120
+    - - 14
+      - 120
+    - - 15
+      - 120
+    - - 16
+      - 120
+    - - 17
+      - 120
+    - - 18
+      - 120
+    - - 19
+      - 120
+    - - 20
+      - 120
+    - - 21
+      - 120
+    - - 22
+      - 120
+    - - 23
+      - 120
+    - - 24
+      - 120
+    - - 25
+      - 120
+    - - 26
+      - 120
+    - - 27
+      - 120
+    - - 28
+      - 120
+    - - 29
+      - 120
+    - - 30
+      - 480000
+    - - 31
+      - 480000
+    - - 32
+      - 480000
+    - - 33
+      - 480000
+    - - 34
+      - 480000
+    - - 35
+      - 480000
+    - - 36
+      - 480000
+    - - 37
+      - 480000
+    - - 38
+      - 480000
+    - - 39
+      - 480000
+    - - 40
+      - 480000
+    - - 41
+      - 480000
+    - - 42
+      - 480000
+    - - 43
+      - 480000
+    - - 44
+      - 480000
+    - - 45
+      - 480000
+    - - 46
+      - 480000
+    - - 47
+      - 480000
+    - - 48
+      - 480000
+    - - 49
+      - 480000
+    - - 50
+      - 480000
+    - - 51
+      - 480000
+    - - 52
+      - 480000
+    - - 53
+      - 480000
+    - - 54
+      - 480000
+    - - 55
+      - 480000
+    - - 56
+      - 480000
+    - - 57
+      - 480000
+    - - 58
+      - 480000
+    - - 59
+      - 480000
+  - metric: kafka_consumer_rebalance_total
+    labels: group=notification-worker
+    points: 60
+    min: 0
+    max: 14
+    mean: 7.0
+    first: 0
+    last: 14
+    series:
+    - - 0
+      - 0
+    - - 1
+      - 0
+    - - 2
+      - 0
+    - - 3
+      - 0
+    - - 4
+      - 0
+    - - 5
+      - 0
+    - - 6
+      - 0
+    - - 7
+      - 0
+    - - 8
+      - 0
+    - - 9
+      - 0
+    - - 10
+      - 0
+    - - 11
+      - 0
+    - - 12
+      - 0
+    - - 13
+      - 0
+    - - 14
+      - 0
+    - - 15
+      - 0
+    - - 16
+      - 0
+    - - 17
+      - 0
+    - - 18
+      - 0
+    - - 19
+      - 0
+    - - 20
+      - 0
+    - - 21
+      - 0
+    - - 22
+      - 0
+    - - 23
+      - 0
+    - - 24
+      - 0
+    - - 25
+      - 0
+    - - 26
+      - 0
+    - - 27
+      - 0
+    - - 28
+      - 0
+    - - 29
+      - 0
+    - - 30
+      - 14
+    - - 31
+      - 14
+    - - 32
+      - 14
+    - - 33
+      - 14
+    - - 34
+      - 14
+    - - 35
+      - 14
+    - - 36
+      - 14
+    - - 37
+      - 14
+    - - 38
+      - 14
+    - - 39
+      - 14
+    - - 40
+      - 14
+    - - 41
+      - 14
+    - - 42
+      - 14
+    - - 43
+      - 14
+    - - 44
+      - 14
+    - - 45
+      - 14
+    - - 46
+      - 14
+    - - 47
+      - 14
+    - - 48
+      - 14
+    - - 49
+      - 14
+    - - 50
+      - 14
+    - - 51
+      - 14
+    - - 52
+      - 14
+    - - 53
+      - 14
+    - - 54
+      - 14
+    - - 55
+      - 14
+    - - 56
+      - 14
+    - - 57
+      - 14
+    - - 58
+      - 14
+    - - 59
+      - 14
+  - metric: kafka_messages_in_total
+    labels: topic=notifications
+    points: 60
+    min: 4200
+    max: 4400
+    mean: 4300.0
+    first: 4200
+    last: 4400
+    series:
+    - - 0
+      - 4200
+    - - 1
+      - 4200
+    - - 2
+      - 4200
+    - - 3
+      - 4200
+    - - 4
+      - 4200
+    - - 5
+      - 4200
+    - - 6
+      - 4200
+    - - 7
+      - 4200
+    - - 8
+      - 4200
+    - - 9
+      - 4200
+    - - 10
+      - 4200
+    - - 11
+      - 4200
+    - - 12
+      - 4200
+    - - 13
+      - 4200
+    - - 14
+      - 4200
+    - - 15
+      - 4200
+    - - 16
+      - 4200
+    - - 17
+      - 4200
+    - - 18
+      - 4200
+    - - 19
+      - 4200
+    - - 20
+      - 4200
+    - - 21
+      - 4200
+    - - 22
+      - 4200
+    - - 23
+      - 4200
+    - - 24
+      - 4200
+    - - 25
+      - 4200
+    - - 26
+      - 4200
+    - - 27
+      - 4200
+    - - 28
+      - 4200
+    - - 29
+      - 4200
+    - - 30
+      - 4400
+    - - 31
+      - 4400
+    - - 32
+      - 4400
+    - - 33
+      - 4400
+    - - 34
+      - 4400
+    - - 35
+      - 4400
+    - - 36
+      - 4400
+    - - 37
+      - 4400
+    - - 38
+      - 4400
+    - - 39
+      - 4400
+    - - 40
+      - 4400
+    - - 41
+      - 4400
+    - - 42
+      - 4400
+    - - 43
+      - 4400
+    - - 44
+      - 4400
+    - - 45
+      - 4400
+    - - 46
+      - 4400
+    - - 47
+      - 4400
+    - - 48
+      - 4400
+    - - 49
+      - 4400
+    - - 50
+      - 4400
+    - - 51
+      - 4400
+    - - 52
+      - 4400
+    - - 53
+      - 4400
+    - - 54
+      - 4400
+    - - 55
+      - 4400
+    - - 56
+      - 4400
+    - - 57
+      - 4400
+    - - 58
+      - 4400
+    - - 59
+      - 4400
+  query_logs:
+  - ts: '2026-07-26T03:00:00Z'
+    line: consumer group rebalancing, consumer_rebalance triggered
+    pod: notification-worker-ab12
+    level: error
+    occurrences: 400
+  - ts: '2026-07-26T03:07:00Z'
+    line: NoBrokersAvailable while fetching metadata
+    pod: notification-worker-ab12
+    level: error
+    occurrences: 400
+  search_runbooks:
+  - doc_id: runbooks/kafka.md
+    title: Consumer lag
+    content: NoBrokersAvailable during rebalance means the group is thrashing. Check session.timeout.ms
+      against processing time.
+    matched_by: 'semantic #1 + keyword #1'

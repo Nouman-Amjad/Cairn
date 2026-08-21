@@ -1,0 +1,300 @@
+id: inc-016
+title: Expired TLS certificate on outbound calls (notification-worker)
+archetype: cert_expiry
+solvable: true
+question: notification-worker started failing all outbound calls at 03:00
+ground_truth:
+  root_cause: The client certificate notification-worker presents to its partner endpoint expired at 03:00
+    UTC. Every outbound TLS handshake now fails verification.
+  causal_service: notification-worker
+  contributing_deploy: null
+  required_evidence:
+  - log_pattern: 'x509: certificate has expired'
+  - metric: http_requests_total
+  - event: tls_handshake_failure
+distractors:
+- a DNS resolution latency increase that is unrelated
+- a deploy of notification-worker three weeks earlier
+world:
+  get_deploy_timeline:
+  - at: '2026-07-05T03:00:00Z'
+    revision: bb22ccdd33ee
+    source: argocd
+    service: notification-worker
+    creator: rmoore
+  query_metrics:
+  - metric: http_requests_total
+    labels: app=notification-worker,status=0
+    points: 60
+    min: 0
+    max: 500
+    mean: 250.0
+    first: 0
+    last: 500
+    series:
+    - - 0
+      - 0
+    - - 1
+      - 0
+    - - 2
+      - 0
+    - - 3
+      - 0
+    - - 4
+      - 0
+    - - 5
+      - 0
+    - - 6
+      - 0
+    - - 7
+      - 0
+    - - 8
+      - 0
+    - - 9
+      - 0
+    - - 10
+      - 0
+    - - 11
+      - 0
+    - - 12
+      - 0
+    - - 13
+      - 0
+    - - 14
+      - 0
+    - - 15
+      - 0
+    - - 16
+      - 0
+    - - 17
+      - 0
+    - - 18
+      - 0
+    - - 19
+      - 0
+    - - 20
+      - 0
+    - - 21
+      - 0
+    - - 22
+      - 0
+    - - 23
+      - 0
+    - - 24
+      - 0
+    - - 25
+      - 0
+    - - 26
+      - 0
+    - - 27
+      - 0
+    - - 28
+      - 0
+    - - 29
+      - 0
+    - - 30
+      - 500
+    - - 31
+      - 500
+    - - 32
+      - 500
+    - - 33
+      - 500
+    - - 34
+      - 500
+    - - 35
+      - 500
+    - - 36
+      - 500
+    - - 37
+      - 500
+    - - 38
+      - 500
+    - - 39
+      - 500
+    - - 40
+      - 500
+    - - 41
+      - 500
+    - - 42
+      - 500
+    - - 43
+      - 500
+    - - 44
+      - 500
+    - - 45
+      - 500
+    - - 46
+      - 500
+    - - 47
+      - 500
+    - - 48
+      - 500
+    - - 49
+      - 500
+    - - 50
+      - 500
+    - - 51
+      - 500
+    - - 52
+      - 500
+    - - 53
+      - 500
+    - - 54
+      - 500
+    - - 55
+      - 500
+    - - 56
+      - 500
+    - - 57
+      - 500
+    - - 58
+      - 500
+    - - 59
+      - 500
+  - metric: coredns_request_duration_seconds
+    labels: app=coredns
+    points: 60
+    min: 0.002
+    max: 0.006
+    mean: 0.004
+    first: 0.002
+    last: 0.006
+    series:
+    - - 0
+      - 0.002
+    - - 1
+      - 0.002
+    - - 2
+      - 0.002
+    - - 3
+      - 0.002
+    - - 4
+      - 0.002
+    - - 5
+      - 0.002
+    - - 6
+      - 0.002
+    - - 7
+      - 0.002
+    - - 8
+      - 0.002
+    - - 9
+      - 0.002
+    - - 10
+      - 0.002
+    - - 11
+      - 0.002
+    - - 12
+      - 0.002
+    - - 13
+      - 0.002
+    - - 14
+      - 0.002
+    - - 15
+      - 0.002
+    - - 16
+      - 0.002
+    - - 17
+      - 0.002
+    - - 18
+      - 0.002
+    - - 19
+      - 0.002
+    - - 20
+      - 0.002
+    - - 21
+      - 0.002
+    - - 22
+      - 0.002
+    - - 23
+      - 0.002
+    - - 24
+      - 0.002
+    - - 25
+      - 0.002
+    - - 26
+      - 0.002
+    - - 27
+      - 0.002
+    - - 28
+      - 0.002
+    - - 29
+      - 0.002
+    - - 30
+      - 0.006
+    - - 31
+      - 0.006
+    - - 32
+      - 0.006
+    - - 33
+      - 0.006
+    - - 34
+      - 0.006
+    - - 35
+      - 0.006
+    - - 36
+      - 0.006
+    - - 37
+      - 0.006
+    - - 38
+      - 0.006
+    - - 39
+      - 0.006
+    - - 40
+      - 0.006
+    - - 41
+      - 0.006
+    - - 42
+      - 0.006
+    - - 43
+      - 0.006
+    - - 44
+      - 0.006
+    - - 45
+      - 0.006
+    - - 46
+      - 0.006
+    - - 47
+      - 0.006
+    - - 48
+      - 0.006
+    - - 49
+      - 0.006
+    - - 50
+      - 0.006
+    - - 51
+      - 0.006
+    - - 52
+      - 0.006
+    - - 53
+      - 0.006
+    - - 54
+      - 0.006
+    - - 55
+      - 0.006
+    - - 56
+      - 0.006
+    - - 57
+      - 0.006
+    - - 58
+      - 0.006
+    - - 59
+      - 0.006
+  query_logs:
+  - ts: '2026-07-26T03:00:00Z'
+    line: 'x509: certificate has expired or is not yet valid'
+    pod: notification-worker-77aa
+    level: error
+    occurrences: 400
+  - ts: '2026-07-26T03:07:00Z'
+    line: 'tls: failed to verify certificate, tls_handshake_failure'
+    pod: notification-worker-77aa
+    level: error
+    occurrences: 400
+  search_runbooks:
+  - doc_id: runbooks/certs.md
+    title: Certificate expiry
+    content: An abrupt total failure of outbound calls with x509 errors and no deploy is almost always
+      an expiry. Check notAfter.
+    matched_by: 'semantic #1 + keyword #1'

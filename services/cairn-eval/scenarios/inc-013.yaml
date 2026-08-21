@@ -1,0 +1,295 @@
+id: inc-013
+title: Feature flag change with no deploy (search-api)
+archetype: config_change
+solvable: true
+question: error rate for search-api jumped at 03:20 and there was no deploy — why?
+ground_truth:
+  root_cause: A config reload enabled the 'new_pricing' feature flag at 03:19, which exercised a null-unsafe
+    path in PricingResolver. No code was deployed; the change arrived through configuration.
+  causal_service: search-api
+  contributing_deploy: null
+  required_evidence:
+  - log_pattern: config reload
+  - log_pattern: NullPointerException in PricingResolver
+  - metric: http_requests_total
+distractors:
+- an inventory-api deploy at 02:10 outside the window
+- a coincident increase in request volume
+world:
+  get_deploy_timeline: []
+  query_metrics:
+  - metric: http_requests_total
+    labels: app=search-api,status=500
+    points: 60
+    min: 2
+    max: 190
+    mean: 96.0
+    first: 2
+    last: 190
+    series:
+    - - 0
+      - 2
+    - - 1
+      - 2
+    - - 2
+      - 2
+    - - 3
+      - 2
+    - - 4
+      - 2
+    - - 5
+      - 2
+    - - 6
+      - 2
+    - - 7
+      - 2
+    - - 8
+      - 2
+    - - 9
+      - 2
+    - - 10
+      - 2
+    - - 11
+      - 2
+    - - 12
+      - 2
+    - - 13
+      - 2
+    - - 14
+      - 2
+    - - 15
+      - 2
+    - - 16
+      - 2
+    - - 17
+      - 2
+    - - 18
+      - 2
+    - - 19
+      - 2
+    - - 20
+      - 2
+    - - 21
+      - 2
+    - - 22
+      - 2
+    - - 23
+      - 2
+    - - 24
+      - 2
+    - - 25
+      - 2
+    - - 26
+      - 2
+    - - 27
+      - 2
+    - - 28
+      - 2
+    - - 29
+      - 2
+    - - 30
+      - 190
+    - - 31
+      - 190
+    - - 32
+      - 190
+    - - 33
+      - 190
+    - - 34
+      - 190
+    - - 35
+      - 190
+    - - 36
+      - 190
+    - - 37
+      - 190
+    - - 38
+      - 190
+    - - 39
+      - 190
+    - - 40
+      - 190
+    - - 41
+      - 190
+    - - 42
+      - 190
+    - - 43
+      - 190
+    - - 44
+      - 190
+    - - 45
+      - 190
+    - - 46
+      - 190
+    - - 47
+      - 190
+    - - 48
+      - 190
+    - - 49
+      - 190
+    - - 50
+      - 190
+    - - 51
+      - 190
+    - - 52
+      - 190
+    - - 53
+      - 190
+    - - 54
+      - 190
+    - - 55
+      - 190
+    - - 56
+      - 190
+    - - 57
+      - 190
+    - - 58
+      - 190
+    - - 59
+      - 190
+  - metric: http_requests_total
+    labels: app=search-api
+    points: 60
+    min: 900
+    max: 1150
+    mean: 1025.0
+    first: 900
+    last: 1150
+    series:
+    - - 0
+      - 900
+    - - 1
+      - 900
+    - - 2
+      - 900
+    - - 3
+      - 900
+    - - 4
+      - 900
+    - - 5
+      - 900
+    - - 6
+      - 900
+    - - 7
+      - 900
+    - - 8
+      - 900
+    - - 9
+      - 900
+    - - 10
+      - 900
+    - - 11
+      - 900
+    - - 12
+      - 900
+    - - 13
+      - 900
+    - - 14
+      - 900
+    - - 15
+      - 900
+    - - 16
+      - 900
+    - - 17
+      - 900
+    - - 18
+      - 900
+    - - 19
+      - 900
+    - - 20
+      - 900
+    - - 21
+      - 900
+    - - 22
+      - 900
+    - - 23
+      - 900
+    - - 24
+      - 900
+    - - 25
+      - 900
+    - - 26
+      - 900
+    - - 27
+      - 900
+    - - 28
+      - 900
+    - - 29
+      - 900
+    - - 30
+      - 1150
+    - - 31
+      - 1150
+    - - 32
+      - 1150
+    - - 33
+      - 1150
+    - - 34
+      - 1150
+    - - 35
+      - 1150
+    - - 36
+      - 1150
+    - - 37
+      - 1150
+    - - 38
+      - 1150
+    - - 39
+      - 1150
+    - - 40
+      - 1150
+    - - 41
+      - 1150
+    - - 42
+      - 1150
+    - - 43
+      - 1150
+    - - 44
+      - 1150
+    - - 45
+      - 1150
+    - - 46
+      - 1150
+    - - 47
+      - 1150
+    - - 48
+      - 1150
+    - - 49
+      - 1150
+    - - 50
+      - 1150
+    - - 51
+      - 1150
+    - - 52
+      - 1150
+    - - 53
+      - 1150
+    - - 54
+      - 1150
+    - - 55
+      - 1150
+    - - 56
+      - 1150
+    - - 57
+      - 1150
+    - - 58
+      - 1150
+    - - 59
+      - 1150
+  query_logs:
+  - ts: '2026-07-26T03:00:00Z'
+    line: 'config reload: feature flag ''new_pricing'' enabled'
+    pod: search-api-9911
+    level: error
+    occurrences: 400
+  - ts: '2026-07-26T03:07:00Z'
+    line: NullPointerException in PricingResolver after config reload
+    pod: search-api-9911
+    level: error
+    occurrences: 400
+  search_runbooks:
+  - doc_id: runbooks/flags.md
+    title: Feature flag rollouts
+    content: Flag changes are not deploys and do not appear on the deploy timeline. Check config reload
+      log lines for the window.
+    matched_by: 'semantic #1 + keyword #1'

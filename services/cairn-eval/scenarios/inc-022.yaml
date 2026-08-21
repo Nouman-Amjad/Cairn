@@ -1,0 +1,18 @@
+id: inc-022
+title: Service is not instrumented
+archetype: unsolvable
+solvable: false
+question: why is legacy-reporting slow this morning?
+ground_truth:
+  root_cause: Not determinable from the available evidence. legacy-reporting emits neither metrics nor
+    structured logs.
+  causal_service: legacy-reporting
+  contributing_deploy: null
+  required_evidence: []
+distractors:
+- unrelated healthy metrics from neighbouring services
+world:
+  get_deploy_timeline: []
+  query_metrics: []
+  query_logs: []
+  search_runbooks: []

@@ -1,0 +1,18 @@
+id: inc-029
+title: Question predates data retention entirely
+archetype: unsolvable
+solvable: false
+question: why was checkout slow on the 12th of April?
+ground_truth:
+  root_cause: Not determinable from the available evidence. The window is 90 days back; nothing is retained
+    that far.
+  causal_service: checkout-api
+  contributing_deploy: null
+  required_evidence: []
+distractors:
+- current healthy metrics, which say nothing about April
+world:
+  get_deploy_timeline: []
+  query_metrics: []
+  query_logs: []
+  search_runbooks: []

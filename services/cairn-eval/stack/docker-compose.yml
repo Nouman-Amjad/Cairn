@@ -1,0 +1,49 @@
+# The synthetic incident environment (§12.1).
+#
+# `make eval` runs the suite against in-process fixtures, which is fast and is
+# what gates CI. This stack exists for the other job: driving the *real* MCP
+# servers against real Prometheus, Loki and deploy APIs, so the tool layer is
+# exercised end to end rather than stubbed.
+#
+#   docker compose -f services/cairn-eval/stack/docker-compose.yml up -d
+#   make eval-stack
+#
+# Data is generated from the same YAML scenarios, so the two paths cannot
+# drift: seed.py reads scenarios/ and writes TSDB blocks and log streams.
+
+services:
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      # Backfilled blocks are historical by definition; without this the
+      # incident window is outside the retention head and queries return empty.
+      - --storage.tsdb.retention.time=1y
+      - --web.enable-admin-api
+    volumes:
+      - ./seed/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prom-data:/prometheus
+    ports: ["59090:9090"]
+
+  loki:
+    image: grafana/loki:3.3.2
+    command: -config.file=/etc/loki/loki.yml
+    volumes:
+      - ./seed/loki.yml:/etc/loki/loki.yml:ro
+      - loki-data:/loki
+    ports: ["53100:3100"]
+
+  deploys:
+    # A fake ArgoCD: serves the deploy timeline from the scenario fixtures.
+    image: python:3.12-slim
+    working_dir: /app
+    command: python fake_deploys.py
+    volumes:
+      - ./seed:/app:ro
+      - ../scenarios:/scenarios:ro
+    ports: ["58080:8080"]
+
+volumes:
+  prom-data:
+  loki-data:
