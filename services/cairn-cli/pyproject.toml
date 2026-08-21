@@ -1,0 +1,41 @@
+[project]
+name = "cairn-cli"
+version = "0.1.0"
+description = "Ask Cairn from a terminal"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+readme = "README.md"
+authors = [{ name = "Cairn contributors" }]
+keywords = ["mcp", "observability", "incident-response", "llm", "agents"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: System :: Monitoring",
+]
+
+
+dependencies = [
+    "cairn-core",
+    "httpx>=0.28",
+    "httpx-sse>=0.4",
+    "rich>=13.9",
+    "typer>=0.15",
+]
+
+[project.scripts]
+cairn = "cairn_cli.main:app"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cairn_cli"]
+
+[tool.uv.sources]
+cairn-core = { workspace = true }
+
+[project.urls]
+Homepage = "https://github.com/Nouman-Amjad/cairn"
+Source = "https://github.com/Nouman-Amjad/cairn"
