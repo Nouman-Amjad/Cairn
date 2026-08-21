@@ -1,5 +1,11 @@
 # cairn
 
+[![npm](https://img.shields.io/npm/v/%40nouman-amjad%2Fcairn?logo=npm&color=cb3837)](https://www.npmjs.com/package/@nouman-amjad/cairn)
+[![ci](https://github.com/Nouman-Amjad/Cairn/actions/workflows/ci.yml/badge.svg)](https://github.com/Nouman-Amjad/Cairn/actions/workflows/ci.yml)
+[![license](https://img.shields.io/badge/license-Apache--2.0-blue)](https://github.com/Nouman-Amjad/Cairn/blob/main/LICENSE)
+[![node](https://img.shields.io/node/v/%40nouman-amjad%2Fcairn)](https://nodejs.org)
+[![dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)](https://github.com/Nouman-Amjad/Cairn/blob/main/npm/package.json)
+
 Platform analysis, a live dashboard and log chat for any project.
 **Zero dependencies.** Node 18.17+.
 
@@ -8,6 +14,21 @@ npx @nouman-amjad/cairn analyze
 ```
 
 That is the whole first step. No config file, no signup, no API key.
+
+![Cairn dashboard](https://raw.githubusercontent.com/Nouman-Amjad/Cairn/main/docs/images/dashboard-overview.png)
+
+<details>
+<summary>Findings, logs, services and chat</summary>
+
+![Findings](https://raw.githubusercontent.com/Nouman-Amjad/Cairn/main/docs/images/dashboard-findings.png)
+
+![Logs](https://raw.githubusercontent.com/Nouman-Amjad/Cairn/main/docs/images/dashboard-logs.png)
+
+![Services](https://raw.githubusercontent.com/Nouman-Amjad/Cairn/main/docs/images/dashboard-services.png)
+
+![Chat](https://raw.githubusercontent.com/Nouman-Amjad/Cairn/main/docs/images/dashboard-chat.png)
+
+</details>
 
 Install it once and the command shortens to `cairn`:
 
