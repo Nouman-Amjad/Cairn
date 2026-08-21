@@ -135,6 +135,13 @@ embeddings:
   model: BAAI/bge-m3
   reranker: BAAI/bge-reranker-v2-m3
 
+# The data-subnet CIDR the orchestrator's NetworkPolicy allows egress to.
+# Terraform's `helm_values` output (cairn-infra/envs/*/main.tf) prints the
+# real per-environment value to paste in here; the default matches the dev
+# VPC's data subnet so a fresh checkout still renders.
+network:
+  databaseCidr: 10.0.32.0/20
+
 database:
   host: cairn-prod.abcdefg.eu-west-1.rds.amazonaws.com
   name: cairn
