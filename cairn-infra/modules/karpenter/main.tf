@@ -125,9 +125,9 @@ resource "kubectl_manifest" "node_class" {
     kind       = "EC2NodeClass"
     metadata   = { name = "default" }
     spec = {
-      amiFamily = "AL2023"
-      amiSelectorTerms = [{ alias = "al2023@latest" }]
-      role      = var.node_role_name
+      amiFamily                  = "AL2023"
+      amiSelectorTerms           = [{ alias = "al2023@latest" }]
+      role                       = var.node_role_name
       subnetSelectorTerms        = [{ tags = { "karpenter.sh/discovery" = var.cluster_name } }]
       securityGroupSelectorTerms = [{ tags = { "karpenter.sh/discovery" = var.cluster_name } }]
       blockDeviceMappings = [{
@@ -151,9 +151,9 @@ resource "kubectl_manifest" "gpu_node_class" {
     kind       = "EC2NodeClass"
     metadata   = { name = "gpu" }
     spec = {
-      amiFamily        = "AL2023"
-      amiSelectorTerms = [{ alias = "al2023@latest" }]
-      role             = var.node_role_name
+      amiFamily                  = "AL2023"
+      amiSelectorTerms           = [{ alias = "al2023@latest" }]
+      role                       = var.node_role_name
       subnetSelectorTerms        = [{ tags = { "karpenter.sh/discovery" = var.cluster_name } }]
       securityGroupSelectorTerms = [{ tags = { "karpenter.sh/discovery" = var.cluster_name } }]
       blockDeviceMappings = [{
@@ -203,7 +203,7 @@ resource "kubectl_manifest" "gpu_pool" {
         metadata = { labels = { workload = "inference" } }
         spec = {
           nodeClassRef = { group = "karpenter.k8s.aws", kind = "EC2NodeClass", name = "gpu" }
-          taints = [{ key = "nvidia.com/gpu", value = "true", effect = "NoSchedule" }]
+          taints       = [{ key = "nvidia.com/gpu", value = "true", effect = "NoSchedule" }]
           requirements = [
             # Spot first, on-demand fallback. g5 spot depth in eu-west-1 is
             # good enough to be a strategy rather than a hope.

@@ -36,8 +36,8 @@ resource "aws_db_parameter_group" "this" {
   family = "postgres16"
 
   parameter {
-    name  = "shared_preload_libraries"
-    value = "pg_stat_statements"
+    name         = "shared_preload_libraries"
+    value        = "pg_stat_statements"
     apply_method = "pending-reboot"
   }
 
@@ -112,9 +112,9 @@ resource "aws_db_instance" "this" {
   skip_final_snapshot       = false
   final_snapshot_identifier = "${var.name}-final-${formatdate("YYYYMMDDhhmm", timestamp())}"
 
-  performance_insights_enabled = true
-  monitoring_interval          = 60
-  monitoring_role_arn          = aws_iam_role.monitoring.arn
+  performance_insights_enabled    = true
+  monitoring_interval             = 60
+  monitoring_role_arn             = aws_iam_role.monitoring.arn
   enabled_cloudwatch_logs_exports = ["postgresql", "upgrade"]
 
   auto_minor_version_upgrade = true

@@ -147,12 +147,12 @@ resource "aws_elasticache_subnet_group" "redis" {
 }
 
 resource "aws_elasticache_replication_group" "redis" {
-  replication_group_id = "${local.name}-redis"
-  description          = "Cairn cache, rate limits and the SSE event bus"
-  engine               = "redis"
-  engine_version       = "7.1"
-  node_type            = "cache.t4g.small"
-  num_cache_clusters   = 2
+  replication_group_id       = "${local.name}-redis"
+  description                = "Cairn cache, rate limits and the SSE event bus"
+  engine                     = "redis"
+  engine_version             = "7.1"
+  node_type                  = "cache.t4g.small"
+  num_cache_clusters         = 2
   automatic_failover_enabled = true
 
   subnet_group_name  = aws_elasticache_subnet_group.redis.name
@@ -194,11 +194,11 @@ output "policy_bucket" { value = module.s3.policy_bucket }
 output "helm_values" {
   description = "Paste into cairn-deploy/values/prod.yaml when infra changes."
   value = {
-    database = { host = module.rds.address, port = 5432 }
-    redis    = { host = aws_elasticache_replication_group.redis.primary_endpoint_address, port = 6379 }
-    s3       = { bucket = module.s3.artifacts_bucket, kmsKeyId = module.s3.kms_key_arn }
-    policy   = { bundleUrl = "s3://${module.s3.policy_bucket}/bundles/cairn.tar.gz" }
-    network  = { databaseCidr = module.vpc.data_subnet_cidrs[0] }
+    database       = { host = module.rds.address, port = 5432 }
+    redis          = { host = aws_elasticache_replication_group.redis.primary_endpoint_address, port = 6379 }
+    s3             = { bucket = module.s3.artifacts_bucket, kmsKeyId = module.s3.kms_key_arn }
+    policy         = { bundleUrl = "s3://${module.s3.policy_bucket}/bundles/cairn.tar.gz" }
+    network        = { databaseCidr = module.vpc.data_subnet_cidrs[0] }
     serviceAccount = { annotations = module.irsa.role_arns }
   }
 }

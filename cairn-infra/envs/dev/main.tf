@@ -143,14 +143,14 @@ resource "aws_elasticache_subnet_group" "redis" {
 }
 
 resource "aws_elasticache_cluster" "redis" {
-  cluster_id           = "${local.name}-redis"
-  engine               = "redis"
-  engine_version       = "7.1"
-  node_type            = "cache.t4g.micro"
-  num_cache_nodes      = 1
-  subnet_group_name    = aws_elasticache_subnet_group.redis.name
-  security_group_ids   = [aws_security_group.redis.id]
-  tags                 = local.tags
+  cluster_id         = "${local.name}-redis"
+  engine             = "redis"
+  engine_version     = "7.1"
+  node_type          = "cache.t4g.micro"
+  num_cache_nodes    = 1
+  subnet_group_name  = aws_elasticache_subnet_group.redis.name
+  security_group_ids = [aws_security_group.redis.id]
+  tags               = local.tags
 }
 
 resource "aws_security_group" "redis" {
