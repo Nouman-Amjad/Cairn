@@ -1,0 +1,48 @@
+[project]
+name = "cairn-core"
+version = "0.1.0"
+description = "Shared domain model, config, auth and telemetry for Cairn"
+requires-python = ">=3.12"
+license = "Apache-2.0"
+readme = "README.md"
+authors = [{ name = "Cairn contributors" }]
+keywords = ["mcp", "observability", "incident-response", "llm", "agents"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: System :: Monitoring",
+]
+
+
+dependencies = [
+    "pydantic>=2.10",
+    "pydantic-settings>=2.7",
+    "sqlalchemy[asyncio]>=2.0.36",
+    "asyncpg>=0.30",
+    "alembic>=1.14",
+    "pgvector>=0.3.6",
+    "httpx>=0.28",
+    "pyjwt[crypto]>=2.10",
+    "structlog>=24.4",
+    "opentelemetry-sdk>=1.29",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.29",
+    # Langfuse ingests OTLP over HTTP; the collector takes gRPC.
+    "opentelemetry-exporter-otlp-proto-http>=1.29",
+    "opentelemetry-instrumentation-fastapi>=0.50b0",
+    "opentelemetry-instrumentation-httpx>=0.50b0",
+    "opentelemetry-instrumentation-asyncpg>=0.50b0",
+    "boto3>=1.35",
+    "redis>=5.2",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cairn_core"]
+
+[project.urls]
+Homepage = "https://github.com/Nouman-Amjad/cairn"
+Source = "https://github.com/Nouman-Amjad/cairn"
