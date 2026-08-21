@@ -17,7 +17,7 @@ classifiers = [
 
 dependencies = [
     "cairn-core",
-    "mcp>=1.2",
+    "mcp>=1.2,<2.0",
     "starlette>=0.41",
     "uvicorn[standard]>=0.34",
     "prometheus-client>=0.21",
