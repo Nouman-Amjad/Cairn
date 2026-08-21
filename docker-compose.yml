@@ -1,0 +1,56 @@
+# Local development. Everything except the GPU.
+#
+# The local model tier is absent on purpose: an 8B AWQ model does not run on a
+# laptop, and pretending otherwise produces a dev environment that lies about
+# routing. Run with CAIRN_ROUTER_ANTHROPIC_API_KEY set and the router will put
+# everything on the cloud path, reporting `cloud_unconfigured_fallback` for
+# what would be local in production. `make eval` runs the agent loop with no
+# model at all.
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: cairn
+      POSTGRES_PASSWORD: cairn
+      POSTGRES_DB: cairn
+    ports: ["55432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cairn"]
+      interval: 5s
+      retries: 10
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    ports: ["56379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:RELEASE.2024-11-07T00-52-20Z
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: cairn
+      MINIO_ROOT_PASSWORD: cairn-dev-secret
+    ports: ["59000:9000", "59001:9001"]
+    volumes:
+      - miniodata:/data
+
+  opa:
+    image: openpolicyagent/opa:0.70.0-static
+    command:
+      - run
+      - --server
+      - --addr=0.0.0.0:8181
+      - /policy
+    volumes:
+      - ./cairn-deploy/policy:/policy:ro
+    ports: ["58181:8181"]
+
+volumes:
+  pgdata:
+  miniodata:

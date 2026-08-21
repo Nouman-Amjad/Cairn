@@ -1,0 +1,102 @@
+[project]
+name = "cairn-workspace"
+version = "0.1.0"
+description = "Cairn: agentic incident-analysis copilot"
+requires-python = ">=3.12"
+dependencies = [
+    "cairn-core",
+    "cairn-router",
+    "cairn-orchestrator",
+    "cairn-gateway",
+    "cairn-approval",
+    "cairn-mcp-observability",
+    "cairn-mcp-runbooks",
+    "cairn-mcp-actions",
+    "cairn-eval",
+    "cairn-cli",
+]
+
+[tool.uv.workspace]
+members = ["packages/*", "services/*"]
+
+[tool.uv.sources]
+cairn-core = { workspace = true }
+cairn-router = { workspace = true }
+cairn-orchestrator = { workspace = true }
+cairn-gateway = { workspace = true }
+cairn-approval = { workspace = true }
+cairn-mcp-observability = { workspace = true }
+cairn-mcp-runbooks = { workspace = true }
+cairn-mcp-actions = { workspace = true }
+cairn-eval = { workspace = true }
+cairn-cli = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
+    "pytest-cov>=6.0",
+    "ruff>=0.8",
+    "mypy>=1.13",
+    "testcontainers[postgres]>=4.8",
+    "httpx>=0.28",
+    "respx>=0.22",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC", "S", "RUF"]
+ignore = ["S101"]  # asserts are how the self-checks work
+
+[tool.ruff.lint.isort]
+# Without this, ruff files the workspace packages under third-party and
+# reshuffles every import block on the first run.
+known-first-party = [
+    "cairn_core",
+    "cairn_mcp_kit",
+    "cairn_router",
+    "cairn_orchestrator",
+    "cairn_gateway",
+    "cairn_approval",
+    "cairn_mcp_observability",
+    "cairn_mcp_runbooks",
+    "cairn_mcp_actions",
+    "cairn_eval",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests: long assertion messages are worth more than a 100-column rule, and
+# the security lints (hardcoded "passwords", asserts) are all false positives
+# on fixtures.
+"**/tests/**" = ["S", "B", "E501", "RUF059"]
+"**/conftest.py" = ["E402"]
+"**/migrations/**" = ["E501"]
+# Tool descriptions and prompts are prose written for a model to read.
+# Wrapping them at 100 columns makes them harder to review, not easier.
+"**/server.py" = ["E501"]
+"**/incidents.py" = ["E501", "S311"]
+"**/models.py" = ["E501"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+plugins = ["pydantic.mypy"]
+
+# Source is checked under strict; tests are not. Annotating every fixture and
+# putting `-> None` on 200 test functions buys nothing — a test that
+# type-checks and asserts the wrong thing is still a bad test — and the noise
+# would bury the real findings in the source tree.
+exclude = ["/tests/", "conftest.py"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["packages", "services"]
+filterwarnings = ["error::DeprecationWarning"]
+
+[tool.coverage.report]
+fail_under = 80
+omit = ["*/migrations/*", "*/tests/*"]
