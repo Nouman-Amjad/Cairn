@@ -135,7 +135,10 @@ spec:
             requests: { cpu: 50m, memory: 96Mi }
             limits: { memory: 192Mi }
           readinessProbe:
-            httpGet: { path: /health?bundle=true, port: 8181 }
+            # Quoted: an unquoted `?` in a flow-style YAML value is parsed as
+            # the complex-mapping-key indicator, not a literal character, and
+            # breaks the document.
+            httpGet: { path: "/health?bundle=true", port: 8181 }
             periodSeconds: 5
         {{- end }}
       volumes:
