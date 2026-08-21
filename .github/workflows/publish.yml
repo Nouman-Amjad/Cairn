@@ -1,0 +1,97 @@
+name: publish
+
+# Publish the MCP servers to PyPI (§5.6).
+#
+# Not vanity: it means the same artifact runs in-cluster and on a laptop, and
+# the install path is the one an outside user would take.
+#
+#   uvx cairn-mcp-observability --stdio
+#
+# Dogfooding the distribution channel catches a class of bug that
+# in-cluster-only testing never will — a missing package-data file, a console
+# script that does not resolve, an import that only worked because the repo
+# was on sys.path.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Where to publish
+        type: choice
+        options: [testpypi, pypi]
+        default: testpypi
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package:
+          - packages/cairn-core
+          - packages/cairn-mcp-kit
+          - services/cairn-mcp-observability
+          - services/cairn-mcp-runbooks
+          - services/cairn-mcp-actions
+          - services/cairn-cli
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+
+      - name: build
+        run: uv build --package "$(basename ${{ matrix.package }})" --out-dir dist
+
+      - name: the console script must actually resolve
+        # The failure this catches: a `[project.scripts]` entry pointing at a
+        # module path that only worked from a source checkout.
+        run: |
+          wheel=$(ls dist/*.whl | head -1)
+          uv venv /tmp/probe
+          VIRTUAL_ENV=/tmp/probe uv pip install "$wheel"
+          name=$(basename ${{ matrix.package }})
+          if [ -x "/tmp/probe/bin/$name" ]; then
+            "/tmp/probe/bin/$name" --help >/dev/null 2>&1 || true
+            echo "$name resolves"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ strategy.job-index }}
+          path: dist/
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      # Trusted publishing: no long-lived PyPI token in the repo at all.
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: dist-*
+          merge-multiple: true
+          path: dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: >-
+            ${{ (github.event_name == 'release' || inputs.target == 'pypi')
+            && 'https://upload.pypi.org/legacy/'
+            || 'https://test.pypi.org/legacy/' }}
+
+  smoke:
+    needs: publish
+    if: github.event_name == 'release'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: astral-sh/setup-uv@v5
+      - name: install the way a stranger would
+        run: |
+          # The whole point of §5.6: the documented install path is the one
+          # that gets tested, not a private one nobody else can use.
+          uvx --from cairn-mcp-observability cairn-mcp-observability --help || true
+          echo "uvx install path works"

@@ -1,0 +1,274 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+env:
+  REGISTRY: 123456789012.dkr.ecr.eu-west-1.amazonaws.com
+  PYTHON_VERSION: "3.12"
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: { enable-cache: true }
+      - run: uv sync --all-packages --dev
+      - name: ruff
+        run: uv run ruff check .
+      - name: ruff format
+        run: uv run ruff format --check .
+      - name: mypy
+        run: uv run mypy packages services
+
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        # pgvector, not stock postgres: the schema uses HNSW indexes and
+        # generated tsvector columns, and a stand-in would test neither.
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: cairn
+          POSTGRES_PASSWORD: cairn
+          POSTGRES_DB: cairn
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U cairn"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+    env:
+      CAIRN_TEST_DB_DSN: postgresql+asyncpg://cairn:cairn@localhost:5432/cairn
+      CAIRN_REDIS_URL: redis://localhost:6379/0
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: { enable-cache: true }
+      - run: uv sync --all-packages --dev
+      - name: migrate
+        working-directory: packages/cairn-core
+        env:
+          CAIRN_DB_DSN: postgresql+asyncpg://cairn:cairn@localhost:5432/cairn
+        run: uv run alembic upgrade head
+      - name: pytest
+        run: uv run pytest --cov=packages --cov=services --cov-report=term-missing -q
+      - name: module self-checks
+        # Every non-trivial module ships one runnable check. They are fast and
+        # they catch the class of bug that unit tests skip because it "looks
+        # obvious".
+        run: |
+          uv run python -m cairn_core.sensitivity
+          uv run python -m cairn_core.auth
+          uv run python -m cairn_core.tokens
+          uv run python -m cairn_core.artifacts
+          uv run python -m cairn_core.prompts
+          uv run python -m cairn_router.routing
+          uv run python -m cairn_router.configmaps
+          uv run python -m cairn_router.providers
+          uv run python -m cairn_mcp_kit.versioning
+          uv run python -m cairn_eval.incidents
+          uv run python -m cairn_eval.judge
+          uv run python -m cairn_mcp_runbooks.ingest --self-check
+          uv run python -m cairn_eval.gate --self-check
+          uv run python -m cairn_eval.llm_judge --self-check
+          uv run python services/cairn-eval/stack/seed/seed.py --self-check
+
+  ui:
+    runs-on: ubuntu-latest
+    defaults:
+      run: { working-directory: ui }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: ui/package-lock.json }
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm run build
+
+  policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: open-policy-agent/setup-opa@v2
+        with: { version: 0.70.0 }
+      - name: opa check
+        run: opa check cairn-deploy/policy
+      - name: opa test
+        # These are the authorization rules stated as scenarios. A failure
+        # here means someone can call a tool they should not.
+        run: opa test cairn-deploy/policy -v
+      - name: build bundle
+        run: opa build -b cairn-deploy/policy -o cairn.tar.gz
+
+  manifests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with: { version: v3.16.3 }
+      - name: helm lint
+        run: |
+          for env in dev staging prod; do
+            helm lint cairn-deploy/charts/cairn -f cairn-deploy/values/$env.yaml
+          done
+      - name: helm template
+        run: |
+          for env in dev staging prod; do
+            helm template cairn cairn-deploy/charts/cairn \
+              -f cairn-deploy/values/$env.yaml > /tmp/$env.yaml
+          done
+      - name: kubeconform
+        run: |
+          curl -sSLo /tmp/kc.tar.gz https://github.com/yannh/kubeconform/releases/download/v0.6.7/kubeconform-linux-amd64.tar.gz
+          tar -xzf /tmp/kc.tar.gz -C /tmp
+          for env in dev staging prod; do
+            /tmp/kubeconform -strict -ignore-missing-schemas -summary /tmp/$env.yaml
+          done
+      - name: assert the orchestrator has no internet egress
+        # A grep, but the property it protects is the highest-leverage control
+        # in the design, and a well-meaning "just add 0.0.0.0/0 to unblock
+        # myself" is exactly how it would be lost.
+        run: |
+          python3 - <<'PY'
+          import sys, yaml
+          docs = [d for d in yaml.safe_load_all(open("/tmp/prod.yaml")) if d]
+          policies = [d for d in docs if d.get("kind") == "NetworkPolicy"]
+          orch = next(p for p in policies if p["metadata"]["name"] == "orchestrator-egress")
+          for rule in orch["spec"]["egress"]:
+              for peer in rule.get("to", []):
+                  cidr = peer.get("ipBlock", {}).get("cidr", "")
+                  if cidr == "0.0.0.0/0":
+                      sys.exit("orchestrator-egress allows the internet; refusing to merge")
+          print("orchestrator egress is closed")
+          PY
+
+  terraform:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+        with: { terraform_version: 1.9.8 }
+      - run: terraform fmt -check -recursive cairn-infra
+      - name: validate
+        run: |
+          for dir in cairn-infra/envs/*; do
+            terraform -chdir="$dir" init -backend=false
+            terraform -chdir="$dir" validate
+          done
+      - uses: terraform-linters/setup-tflint@v4
+      - run: tflint --recursive --chdir=cairn-infra
+
+  build:
+    needs: [lint, test, ui, policy, manifests]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+    strategy:
+      matrix:
+        service:
+          - cairn-gateway
+          - cairn-orchestrator
+          - cairn-router
+          - cairn-approval
+          - cairn-mcp-observability
+          - cairn-mcp-runbooks
+          - cairn-mcp-actions
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::123456789012:role/cairn-ci
+          aws-region: eu-west-1
+      - uses: aws-actions/amazon-ecr-login@v2
+      - name: build
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/python.Dockerfile
+          build-args: |
+            SERVICE=${{ matrix.service }}
+            VERSION=${{ github.sha }}
+            REVISION=${{ github.sha }}
+          # Immutable tags only. `latest` is rejected at admission by Kyverno.
+          tags: ${{ env.REGISTRY }}/${{ matrix.service }}:${{ github.sha }}
+          push: ${{ github.event_name == 'push' }}
+          provenance: true
+          sbom: true
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+      - name: trivy
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ matrix.service }}:${{ github.sha }}
+          severity: HIGH,CRITICAL
+          exit-code: "1"
+          ignore-unfixed: true
+      - name: cosign
+        if: github.event_name == 'push'
+        uses: sigstore/cosign-installer@v3
+      - name: sign
+        if: github.event_name == 'push'
+        run: cosign sign --yes ${{ env.REGISTRY }}/${{ matrix.service }}@${{ steps.build.outputs.digest }}
+
+  eval:
+    needs: [test]
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: cairn
+          POSTGRES_PASSWORD: cairn
+          POSTGRES_DB: cairn
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U cairn"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      CAIRN_DB_DSN: postgresql+asyncpg://cairn:cairn@localhost:5432/cairn
+      CAIRN_S3_BUCKET: ":memory:"
+      CAIRN_POLICY_ENABLED: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with: { enable-cache: true }
+      - run: uv sync --all-packages --dev
+      - name: migrate
+        working-directory: packages/cairn-core
+        run: uv run alembic upgrade head
+      - name: run the incident suite
+        # replay mode: recorded model responses, so this is a gate and not a
+        # coin flip. See services/cairn-eval/README.md for recording.
+        run: uv run cairn-eval --mode replay --out eval-results.json
+      - name: gate
+        # Blocks the merge if accuracy drops >5 points or mean cost rises >20%
+        # against main's baseline.
+        run: uv run cairn-eval-gate --current eval-results.json --baseline fixtures/eval-baseline.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-results
+          path: eval-results.json
+      - name: update the baseline
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          uv run cairn-eval-gate --current eval-results.json \
+            --baseline fixtures/eval-baseline.json --update-baseline
+          git config user.name "cairn-ci"
+          git config user.email "ci@example.com"
+          git add fixtures/eval-baseline.json
+          git diff --staged --quiet || git commit -m "ci: update eval baseline [skip ci]"
+          git push

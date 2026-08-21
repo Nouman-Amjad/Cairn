@@ -1,0 +1,40 @@
+name: cd
+
+# Deployment is a Git write, never a kubectl. No human has apply access to
+# production; ArgoCD reconciles what is in cairn-deploy.
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  promote:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: Nouman-Amjad/cairn-deploy
+          token: ${{ secrets.DEPLOY_REPO_TOKEN }}
+      - name: pin staging to this build
+        run: |
+          sha=${{ github.event.workflow_run.head_sha }}
+          python3 - "$sha" <<'PY'
+          import re, sys
+          from pathlib import Path
+          sha = sys.argv[1]
+          path = Path("values/staging.yaml")
+          text = path.read_text()
+          if "image:" in text:
+              text = re.sub(r'tag: ".*"', f'tag: "{sha}"', text, count=1)
+          else:
+              text += f'\nglobal:\n  image:\n    tag: "{sha}"\n'
+          path.write_text(text)
+          PY
+          git config user.name cairn-ci
+          git config user.email ci@example.com
+          git commit -am "staging: ${{ github.event.workflow_run.head_sha }}"
+          git push
+      # Production is promoted by a human opening a PR against values/prod.yaml.
+      # The canary and its cost gate take it from there.
