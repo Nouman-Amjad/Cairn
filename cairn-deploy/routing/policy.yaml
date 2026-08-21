@@ -1,0 +1,24 @@
+# Routing policy. Watched and hot-reloaded by cairn-router.
+#
+# tiers: local | local_forced | cloud
+#   local        prefer local, may spill to the cheap cloud model when saturated
+#   local_forced never leaves the local tier, whatever the load
+#   cloud        prefer the strong cloud model, falls back to local
+version: 3
+tasks:
+  classification: local
+  # Forced: raw log lines are the PII risk, and this is the highest-volume
+  # stream of production text in the system.
+  summarization: local_forced
+  arg_extraction: local
+  compaction: local
+  critique: local
+  # Multi-hop reasoning; 8B plans are measurably worse on the eval suite.
+  planning: cloud
+  # The answer a human reads during an incident. Quality matters most here.
+  synthesis: cloud
+limits:
+  local_queue_depth: 40
+  queue_deadline_ms: 20000
+  cloud_error_rate_trip: 0.10
+  cost_backoff_fraction: 0.80

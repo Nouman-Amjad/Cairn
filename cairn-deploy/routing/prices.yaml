@@ -1,0 +1,20 @@
+# USD per million tokens. A vendor price change is an edit here, not a deploy.
+#
+# Local is priced at zero per token on purpose: the GPU is a fixed hourly
+# cost, not a marginal one. Pretending otherwise makes per-query cost move
+# when utilisation moves. GPU spend is attributed separately in the cost
+# dashboard from cairn_gpu_hours.
+version: 2
+models:
+  claude-sonnet-4-5:
+    input: 3.00
+    output: 15.00
+    cached_read: 0.30
+  claude-haiku-4-5-20251001:
+    input: 1.00
+    output: 5.00
+    cached_read: 0.10
+  cairn-local:
+    input: 0.0
+    output: 0.0
+    cached_read: 0.0
