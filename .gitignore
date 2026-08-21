@@ -14,6 +14,7 @@ build/
 ui/node_modules/
 ui/.next/
 ui/out/
+ui/tsconfig.tsbuildinfo
 
 .terraform/
 *.tfstate
