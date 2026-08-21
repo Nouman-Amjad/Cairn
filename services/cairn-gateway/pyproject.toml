@@ -1,0 +1,29 @@
+[project]
+name = "cairn-gateway"
+version = "0.1.0"
+description = "Cairn's edge: OIDC, rate limits, cost budgets and SSE fan-out"
+requires-python = ">=3.12"
+dependencies = [
+    "cairn-core",
+    "cairn-orchestrator",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.34",
+    "sse-starlette>=2.1",
+    "httpx>=0.28",
+    "redis>=5.2",
+    "prometheus-client>=0.21",
+]
+
+[project.scripts]
+cairn-gateway = "cairn_gateway.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cairn_gateway"]
+
+[tool.uv.sources]
+cairn-core = { workspace = true }
+cairn-orchestrator = { workspace = true }
