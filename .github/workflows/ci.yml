@@ -60,27 +60,36 @@ jobs:
           CAIRN_DB_DSN: postgresql+asyncpg://cairn:cairn@localhost:5432/cairn
         run: uv run alembic upgrade head
       - name: pytest
-        run: uv run pytest --cov=packages --cov=services --cov-report=term-missing -q
+        # Wrapped in `coverage run -p` rather than pytest-cov's own --cov flag:
+        # parallel mode writes a per-process data file so this combines with
+        # the self-checks below into one number, instead of pytest's coverage
+        # alone standing in for what the self-checks already exercise.
+        run: uv run coverage run -p -m pytest -q
       - name: module self-checks
-        # Every non-trivial module ships one runnable check. They are fast and
+        # Every non-trivial module ships one runnable check. They are fast,
         # they catch the class of bug that unit tests skip because it "looks
-        # obvious".
+        # obvious", and — wrapped the same way as pytest above — they count
+        # toward the coverage gate rather than being invisible to it.
         run: |
-          uv run python -m cairn_core.sensitivity
-          uv run python -m cairn_core.auth
-          uv run python -m cairn_core.tokens
-          uv run python -m cairn_core.artifacts
-          uv run python -m cairn_core.prompts
-          uv run python -m cairn_router.routing
-          uv run python -m cairn_router.configmaps
-          uv run python -m cairn_router.providers
-          uv run python -m cairn_mcp_kit.versioning
-          uv run python -m cairn_eval.incidents
-          uv run python -m cairn_eval.judge
-          uv run python -m cairn_mcp_runbooks.ingest --self-check
-          uv run python -m cairn_eval.gate --self-check
-          uv run python -m cairn_eval.llm_judge --self-check
-          uv run python services/cairn-eval/stack/seed/seed.py --self-check
+          uv run coverage run -p -m cairn_core.sensitivity
+          uv run coverage run -p -m cairn_core.auth
+          uv run coverage run -p -m cairn_core.tokens
+          uv run coverage run -p -m cairn_core.artifacts
+          uv run coverage run -p -m cairn_core.prompts
+          uv run coverage run -p -m cairn_router.routing
+          uv run coverage run -p -m cairn_router.configmaps
+          uv run coverage run -p -m cairn_router.providers
+          uv run coverage run -p -m cairn_mcp_kit.versioning
+          uv run coverage run -p -m cairn_eval.incidents
+          uv run coverage run -p -m cairn_eval.judge
+          uv run coverage run -p -m cairn_mcp_runbooks.ingest --self-check
+          uv run coverage run -p -m cairn_eval.gate --self-check
+          uv run coverage run -p -m cairn_eval.llm_judge --self-check
+          uv run coverage run -p services/cairn-eval/stack/seed/seed.py --self-check
+      - name: coverage
+        run: |
+          uv run coverage combine
+          uv run coverage report -m
 
   ui:
     runs-on: ubuntu-latest
