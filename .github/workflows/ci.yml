@@ -6,7 +6,6 @@ on:
     branches: [main]
 
 env:
-  REGISTRY: 123456789012.dkr.ecr.eu-west-1.amazonaws.com
   PYTHON_VERSION: "3.12"
 
 concurrency:
@@ -193,14 +192,29 @@ jobs:
           - cairn-mcp-observability
           - cairn-mcp-runbooks
           - cairn-mcp-actions
+    env:
+      # Publishing needs a real AWS account, which a clone of this repository
+      # does not have — the account id in the original config was the AWS
+      # documentation placeholder, so this job could never have gone green.
+      # Set the AWS_ROLE_ARN and ECR_REGISTRY repository variables to turn the
+      # push, provenance and signing steps on. Without them the job still
+      # builds and scans every image, which is the part that actually protects
+      # the repository.
+      PUBLISH: ${{ vars.AWS_ROLE_ARN != '' && vars.ECR_REGISTRY != '' && github.event_name == 'push' }}
+      # Immutable tags only. `latest` is rejected at admission by Kyverno.
+      IMAGE: ${{ vars.ECR_REGISTRY != '' && format('{0}/{1}:{2}', vars.ECR_REGISTRY, matrix.service, github.sha) || format('{0}:{1}', matrix.service, github.sha) }}
     steps:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
-      - uses: aws-actions/configure-aws-credentials@v4
+      - name: configure aws credentials
+        if: env.PUBLISH == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::123456789012:role/cairn-ci
-          aws-region: eu-west-1
-      - uses: aws-actions/amazon-ecr-login@v2
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'eu-west-1' }}
+      - name: ecr login
+        if: env.PUBLISH == 'true'
+        uses: aws-actions/amazon-ecr-login@v2
       - name: build
         id: build
         uses: docker/build-push-action@v6
@@ -211,30 +225,38 @@ jobs:
             SERVICE=${{ matrix.service }}
             VERSION=${{ github.sha }}
             REVISION=${{ github.sha }}
-          # Immutable tags only. `latest` is rejected at admission by Kyverno.
-          tags: ${{ env.REGISTRY }}/${{ matrix.service }}:${{ github.sha }}
-          push: ${{ github.event_name == 'push' }}
-          provenance: true
-          sbom: true
+          tags: ${{ env.IMAGE }}
+          push: ${{ env.PUBLISH == 'true' }}
+          # Not pushing means the image has to land in the local daemon, or
+          # there is nothing for trivy to scan.
+          load: ${{ env.PUBLISH != 'true' }}
+          # The docker exporter cannot carry attestations, so these ride the
+          # push path only.
+          provenance: ${{ env.PUBLISH == 'true' }}
+          sbom: ${{ env.PUBLISH == 'true' }}
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
       - name: trivy
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ matrix.service }}:${{ github.sha }}
+          image-ref: ${{ env.IMAGE }}
           severity: HIGH,CRITICAL
           exit-code: "1"
           ignore-unfixed: true
       - name: cosign
-        if: github.event_name == 'push'
+        if: env.PUBLISH == 'true'
         uses: sigstore/cosign-installer@v3
       - name: sign
-        if: github.event_name == 'push'
-        run: cosign sign --yes ${{ env.REGISTRY }}/${{ matrix.service }}@${{ steps.build.outputs.digest }}
+        if: env.PUBLISH == 'true'
+        run: cosign sign --yes ${{ vars.ECR_REGISTRY }}/${{ matrix.service }}@${{ steps.build.outputs.digest }}
 
   eval:
     needs: [test]
     runs-on: ubuntu-latest
+    # The last step commits the refreshed baseline back to main. The default
+    # GITHUB_TOKEN is read-only, which is why that push returned 403.
+    permissions:
+      contents: write
     services:
       postgres:
         image: pgvector/pgvector:pg16
