@@ -34,6 +34,10 @@ jobs:
         package:
           - packages/cairn-core
           - packages/cairn-mcp-kit
+          # cairn-mcp-actions depends on this. Publishing that package without
+          # also publishing cairn-approval would ship a distribution nobody
+          # can install.
+          - services/cairn-approval
           - services/cairn-mcp-observability
           - services/cairn-mcp-runbooks
           - services/cairn-mcp-actions
@@ -48,15 +52,37 @@ jobs:
       - name: the console script must actually resolve
         # The failure this catches: a `[project.scripts]` entry pointing at a
         # module path that only worked from a source checkout.
+        #
+        # Every workspace wheel is installed by path, not by name. `cairn-core`
+        # and `cairn-cli` are taken on PyPI by an unrelated project, so
+        # resolving these by name pulls a stranger's package and the probe
+        # tests their code instead of ours. Installing by path also means the
+        # probe works before anything has ever been published.
         run: |
-          wheel=$(ls dist/*.whl | head -1)
+          set -euo pipefail
+          uv build --all-packages --out-dir /tmp/wheelhouse
           uv venv /tmp/probe
-          VIRTUAL_ENV=/tmp/probe uv pip install "$wheel"
-          name=$(basename ${{ matrix.package }})
-          if [ -x "/tmp/probe/bin/$name" ]; then
-            "/tmp/probe/bin/$name" --help >/dev/null 2>&1 || true
-            echo "$name resolves"
+          VIRTUAL_ENV=/tmp/probe uv pip install /tmp/wheelhouse/*.whl
+
+          # Every declared entry point, not one guessed from the directory
+          # name: cairn-cli installs a script called `cairn`, and
+          # cairn-mcp-runbooks installs two.
+          python3 -c "import tomllib,sys; s=tomllib.load(open(sys.argv[1],'rb'))['project'].get('scripts') or {}; [print(k, v.split(':')[0]) for k,v in s.items()]" \
+            "${{ matrix.package }}/pyproject.toml" > /tmp/scripts.txt
+
+          if [ ! -s /tmp/scripts.txt ]; then
+            echo "$(basename "${{ matrix.package }}") declares no console script"
+            exit 0
           fi
+
+          while read -r script module; do
+            test -x "/tmp/probe/bin/$script"
+            # Import the module the script points at rather than running it.
+            # These entry points start a server and block, so invoking them
+            # here would hang the job until its timeout rather than fail it.
+            /tmp/probe/bin/python -c "import $module"
+            echo "$script -> $module resolves"
+          done < /tmp/scripts.txt
 
       - uses: actions/upload-artifact@v4
         with:
@@ -65,6 +91,17 @@ jobs:
 
   publish:
     needs: build
+    # Off until someone opts in by setting the PYPI_PUBLISH repository
+    # variable to "true".
+    #
+    # Two of the distribution names above — cairn-core and cairn-cli — are
+    # already registered on PyPI by an unrelated project. Uploading under
+    # those names cannot succeed, and anyone installing the MCP servers today
+    # would resolve that project's cairn-core instead of this one. Renaming
+    # the distributions (the import packages can stay as they are) is a
+    # prerequisite for turning this on. Until then the job above still builds
+    # and probes every wheel, which is where its real value was anyway.
+    if: vars.PYPI_PUBLISH == 'true'
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
@@ -85,7 +122,9 @@ jobs:
 
   smoke:
     needs: publish
-    if: github.event_name == 'release'
+    # Installs from the public index, so it can only mean anything once the
+    # publish job above is actually enabled.
+    if: vars.PYPI_PUBLISH == 'true' && github.event_name == 'release'
     runs-on: ubuntu-latest
     steps:
       - uses: astral-sh/setup-uv@v5
